@@ -21,5 +21,5 @@ fi
 yes | "$sdkmanager_path" --licenses > /dev/null || true
 "$sdkmanager_path" --install \
   "platform-tools" \
-  "platforms;android-36.1" \
+  "platforms;android-37.1" \
   "build-tools;36.0.0"
