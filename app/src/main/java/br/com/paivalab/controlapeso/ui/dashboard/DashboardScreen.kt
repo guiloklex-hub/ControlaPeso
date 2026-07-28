@@ -10,14 +10,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,19 +25,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
 import br.com.paivalab.controlapeso.core.time.MeasurementTimeFormatter
-import br.com.paivalab.controlapeso.domain.model.WeightMeasurement
 import br.com.paivalab.controlapeso.domain.model.MeasurementSource
 import br.com.paivalab.controlapeso.ui.components.WeightChart
 import br.com.paivalab.controlapeso.data.preferences.ChartSize
-import br.com.paivalab.controlapeso.data.preferences.VisualEffects
-import br.com.paivalab.controlapeso.ui.theme.LocalVisualEffects
+import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
+import br.com.paivalab.controlapeso.ui.designsystem.components.EmptyState
+import br.com.paivalab.controlapeso.ui.designsystem.components.ErrorState
+import br.com.paivalab.controlapeso.ui.designsystem.components.GoalProgressCard
+import br.com.paivalab.controlapeso.ui.designsystem.components.HeroMetricCard
+import br.com.paivalab.controlapeso.ui.designsystem.components.LoadingState
+import br.com.paivalab.controlapeso.ui.designsystem.components.MetricTile
+import br.com.paivalab.controlapeso.ui.designsystem.components.SectionHeader
+import br.com.paivalab.controlapeso.ui.designsystem.components.StatusPill
 import kotlin.math.abs
 
 @Composable
@@ -58,66 +63,77 @@ fun DashboardScreen(
         ChartSize.COMFORTABLE -> 240.dp
         ChartSize.LARGE -> 320.dp
     }
-    val background = if (LocalVisualEffects.current == VisualEffects.REDUCED) {
-        Modifier.background(MaterialTheme.colorScheme.background)
-    } else {
-        Modifier.background(
-            Brush.verticalGradient(
-                listOf(
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f),
-                    MaterialTheme.colorScheme.background
-                )
-            )
-        )
-    }
     BoxWithConstraints(
         modifier
             .fillMaxSize()
-            .then(background)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         val wide = maxWidth >= 840.dp
+        val horizontalPadding = when {
+            maxWidth >= 840.dp -> ControlaPesoDesignSystem.sizes.expandedContentPadding
+            maxWidth >= 600.dp -> ControlaPesoDesignSystem.sizes.mediumContentPadding
+            else -> ControlaPesoDesignSystem.sizes.compactContentPadding
+        }
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxSize()
+                .widthIn(max = ControlaPesoDesignSystem.sizes.contentMaxWidth),
+            contentPadding = PaddingValues(
+                horizontal = horizontalPadding,
+                vertical = ControlaPesoDesignSystem.spacing.lg
+            ),
+            verticalArrangement = Arrangement.spacedBy(
+                ControlaPesoDesignSystem.spacing.md
+            )
         ) {
             item {
                 Text(
                     greeting(profile?.name, state.currentHour),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.headlineLarge
                 )
                 Text(
                     stringResource(R.string.dashboard_scale_state),
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             item {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onMeasure) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(
+                        ControlaPesoDesignSystem.spacing.xs
+                    )
+                ) {
+                    Button(
+                        onClick = onMeasure,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text(stringResource(R.string.measure_with_scale))
                     }
-                    OutlinedButton(onClick = onManual) {
-                        Text(stringResource(R.string.add_manual_weight))
-                    }
-                    OutlinedButton(onClick = onHistory) {
-                        Text(stringResource(R.string.nav_history))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = onManual) {
+                            Text(stringResource(R.string.add_manual_weight))
+                        }
+                        TextButton(onClick = onHistory) {
+                            Text(stringResource(R.string.nav_history))
+                        }
                     }
                 }
             }
             if (state.isLoading) {
-                item { CircularProgressIndicator() }
+                item { LoadingState(stringResource(R.string.loading_data)) }
             } else if (state.hasError) {
                 item {
-                    Text(
-                        stringResource(R.string.data_load_error),
-                        color = MaterialTheme.colorScheme.error
+                    ErrorState(
+                        title = stringResource(R.string.dashboard_load_error_title),
+                        body = stringResource(R.string.data_load_error)
                     )
                 }
             } else if (profile == null) {
                 item {
                     EmptyDashboard(
-                        text = stringResource(R.string.dashboard_no_profile),
+                        title = stringResource(R.string.dashboard_no_profile_title),
+                        body = stringResource(R.string.dashboard_no_profile),
                         action = stringResource(R.string.create_profile),
                         onAction = onProfiles
                     )
@@ -125,7 +141,8 @@ fun DashboardScreen(
             } else if (state.measurements.isEmpty()) {
                 item {
                     EmptyDashboard(
-                        text = stringResource(R.string.dashboard_no_measurements),
+                        title = stringResource(R.string.dashboard_no_measurements_title),
+                        body = stringResource(R.string.dashboard_no_measurements),
                         action = stringResource(R.string.start_measurement),
                         onAction = onMeasure
                     )
@@ -133,10 +150,9 @@ fun DashboardScreen(
             } else {
                 if (state.measurements.any { it.source == MeasurementSource.DEMO }) {
                     item {
-                        Text(
-                            stringResource(R.string.history_contains_demo),
-                            color = MaterialTheme.colorScheme.error,
-                            fontWeight = FontWeight.Bold
+                        StatusPill(
+                            text = stringResource(R.string.history_contains_demo),
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
                 }
@@ -153,7 +169,13 @@ fun DashboardScreen(
                                 LatestWeightCard(state, unit)
                                 GoalCard(state, unit, onGoals)
                             }
-                            Card(modifier = Modifier.weight(1.4f)) {
+                            Card(
+                                modifier = Modifier.weight(1.4f),
+                                colors = androidx.compose.material3.CardDefaults.cardColors(
+                                    containerColor =
+                                        MaterialTheme.colorScheme.surfaceContainerLow
+                                )
+                            ) {
                                 WeightChart(
                                     measurements = state.measurements,
                                     unit = unit,
@@ -176,7 +198,21 @@ fun DashboardScreen(
                 } else {
                     item { LatestWeightCard(state, unit) }
                     item {
-                        Card(modifier = Modifier.fillMaxWidth()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = androidx.compose.material3.CardDefaults.cardColors(
+                                containerColor =
+                                    MaterialTheme.colorScheme.surfaceContainerLow
+                            )
+                        ) {
+                            SectionHeader(
+                                title = stringResource(R.string.nav_history),
+                                modifier = Modifier.padding(
+                                    start = 16.dp,
+                                    top = 16.dp,
+                                    end = 16.dp
+                                )
+                            )
                             WeightChart(
                                 measurements = state.measurements,
                                 unit = unit,
@@ -208,43 +244,45 @@ private fun LazyListScope.statisticsItem(
 ) {
     val stats = state.statistics ?: return
     item {
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+        Column(
+            verticalArrangement = Arrangement.spacedBy(
+                ControlaPesoDesignSystem.spacing.sm
+            )
+        ) {
+            SectionHeader(stringResource(R.string.period_summary))
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    stringResource(R.string.period_summary),
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Text(
-                    stringResource(
+                MetricTile(
+                    label = stringResource(R.string.last_weight),
+                    value = stringResource(
                         R.string.statistics_average,
                         unit.fromKilograms(stats.averageWeightKg),
                         unit.symbol
                     )
                 )
-                Text(
-                    stringResource(
+                MetricTile(
+                    label = stringResource(R.string.period_summary),
+                    value = stringResource(
                         R.string.statistics_variation,
                         unit.fromKilograms(stats.absoluteVariationKg),
                         unit.symbol,
                         stats.percentageVariation ?: 0.0
                     )
                 )
-                Text(
-                    stringResource(
+                MetricTile(
+                    label = pluralStringResource(
+                        R.plurals.statistics_count,
+                        stats.measurementCount,
+                        stats.measurementCount
+                    ),
+                    value = stringResource(
                         R.string.statistics_min_max,
                         unit.fromKilograms(stats.minimumWeightKg),
                         unit.fromKilograms(stats.maximumWeightKg),
                         unit.symbol
-                    )
-                )
-                Text(
-                    pluralStringResource(
-                        R.plurals.statistics_count,
-                        stats.measurementCount,
-                        stats.measurementCount
                     )
                 )
             }
@@ -260,36 +298,27 @@ private fun LatestWeightCard(
     val latest = state.measurements.last()
     val previous = state.measurements.getOrNull(state.measurements.lastIndex - 1)
     val difference = previous?.let { latest.weightKg - it.weightKg }
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(stringResource(R.string.last_weight), style = MaterialTheme.typography.titleMedium)
-            Text(
-                unit.formatFromKilograms(latest.weightKg),
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold
+    HeroMetricCard(
+        label = stringResource(R.string.last_weight),
+        value = unit.formatFromKilograms(latest.weightKg),
+        supportingText = MeasurementTimeFormatter.dateTime(latest),
+        trend = when {
+            difference == null -> stringResource(R.string.variation_insufficient)
+            abs(difference) < 0.0001 -> stringResource(R.string.variation_unchanged)
+            difference > 0 -> stringResource(
+                R.string.variation_increase,
+                unit.fromKilograms(difference),
+                unit.symbol
             )
-            Text(
-                MeasurementTimeFormatter.dateTime(latest)
+            else -> stringResource(
+                R.string.variation_reduction,
+                unit.fromKilograms(abs(difference)),
+                unit.symbol
             )
-            Text(
-                when {
-                    difference == null -> stringResource(R.string.variation_insufficient)
-                    abs(difference) < 0.0001 -> stringResource(R.string.variation_unchanged)
-                    difference > 0 -> stringResource(
-                        R.string.variation_increase,
-                        unit.fromKilograms(difference),
-                        unit.symbol
-                    )
-                    else -> stringResource(
-                        R.string.variation_reduction,
-                        unit.fromKilograms(abs(difference)),
-                        unit.symbol
-                    )
-                }
-            )
+        },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             state.bmi?.let {
                 Text(stringResource(R.string.bmi_derived, it))
                 Text(
@@ -309,56 +338,48 @@ private fun GoalCard(
 ) {
     val goal = state.activeGoal
     val progress = state.goalProgress
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(stringResource(R.string.goal_progress_title), style = MaterialTheme.typography.titleLarge)
-            if (goal == null || progress == null) {
-                Text(stringResource(R.string.no_active_goal))
-                OutlinedButton(onClick = onGoals) {
-                    Text(stringResource(R.string.create_goal))
-                }
-            } else {
-                LinearProgressIndicator(
-                    progress = { progress.progressFraction.toFloat() },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Text(
-                    if (progress.reached) {
-                        stringResource(R.string.goal_reached_neutral)
-                    } else {
-                        stringResource(
-                            R.string.goal_remaining,
-                            unit.fromKilograms(progress.remainingKg),
-                            unit.symbol
-                        )
-                    }
-                )
-                Text(
-                    stringResource(
-                        R.string.goal_target_value,
-                        unit.fromKilograms(goal.targetWeightKg),
-                        unit.symbol
-                    )
-                )
+    GoalProgressCard(
+        title = stringResource(R.string.goal_progress_title),
+        progress = progress?.progressFraction?.toFloat(),
+        summary = when {
+            goal == null || progress == null -> stringResource(R.string.no_active_goal)
+            progress.reached -> stringResource(R.string.goal_reached_neutral)
+            else -> stringResource(
+                R.string.goal_remaining,
+                unit.fromKilograms(progress.remainingKg),
+                unit.symbol
+            )
+        },
+        supportingText = goal?.let {
+            stringResource(
+                R.string.goal_target_value,
+                unit.fromKilograms(it.targetWeightKg),
+                unit.symbol
+            )
+        },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        if (goal == null || progress == null) {
+            OutlinedButton(onClick = onGoals) {
+                Text(stringResource(R.string.create_goal))
             }
         }
     }
 }
 
 @Composable
-private fun EmptyDashboard(text: String, action: String, onAction: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(text, style = MaterialTheme.typography.bodyLarge)
-            Button(onClick = onAction) { Text(action) }
-        }
-    }
+private fun EmptyDashboard(
+    title: String,
+    body: String,
+    action: String,
+    onAction: () -> Unit
+) {
+    EmptyState(
+        title = title,
+        body = body,
+        actionLabel = action,
+        onAction = onAction
+    )
 }
 
 @Composable

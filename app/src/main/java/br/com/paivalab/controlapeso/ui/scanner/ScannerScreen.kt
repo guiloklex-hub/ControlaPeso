@@ -3,7 +3,6 @@ package br.com.paivalab.controlapeso.ui.scanner
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
@@ -23,6 +21,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,6 +46,9 @@ import br.com.paivalab.controlapeso.bluetooth.BleScanError
 import br.com.paivalab.controlapeso.bluetooth.BleScanPhase
 import br.com.paivalab.controlapeso.bluetooth.BleSupportStatus
 import br.com.paivalab.controlapeso.bluetooth.BluetoothPowerStatus
+import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
+import br.com.paivalab.controlapeso.ui.designsystem.components.EmptyState
+import br.com.paivalab.controlapeso.ui.designsystem.components.ResponsiveScreenList
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -78,12 +80,9 @@ fun ScannerScreen(
             )
         }
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ResponsiveScreenList(
+            modifier = Modifier.padding(innerPadding),
+            maxContentWidth = 1_000.dp
         ) {
             item {
                 Text(
@@ -117,10 +116,16 @@ fun ScannerScreen(
                 )
             }
             item {
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.surfaceContainerLow
+                ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.padding(ControlaPesoDesignSystem.spacing.md),
+                        verticalArrangement = Arrangement.spacedBy(
+                            ControlaPesoDesignSystem.spacing.xs
+                        )
                     ) {
                         Text(
                             stringResource(
@@ -200,10 +205,9 @@ fun ScannerScreen(
 
             if (uiState.devices.isEmpty()) {
                 item {
-                    Text(
-                        text = stringResource(R.string.no_devices),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    EmptyState(
+                        title = stringResource(R.string.no_devices_title),
+                        body = stringResource(R.string.no_devices)
                     )
                 }
             } else {
@@ -225,10 +229,16 @@ fun ScannerScreen(
 
 @Composable
 private fun EnvironmentStatusCard(uiState: ScannerUiState) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(ControlaPesoDesignSystem.spacing.md),
+            verticalArrangement = Arrangement.spacedBy(
+                ControlaPesoDesignSystem.spacing.xs
+            )
         ) {
             StatusRow(
                 label = stringResource(R.string.bluetooth_support_label),
@@ -401,8 +411,12 @@ private fun DeviceCard(
     val time = DateFormat.getTimeInstance(DateFormat.MEDIUM)
         .format(Date(device.lastSeenEpochMillis))
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Column(modifier = Modifier.padding(ControlaPesoDesignSystem.spacing.md)) {
             Text(
                 text = device.advertisedName
                     ?.takeIf(String::isNotBlank)

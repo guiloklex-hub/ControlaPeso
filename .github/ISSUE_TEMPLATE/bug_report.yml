@@ -1,0 +1,79 @@
+name: Relato de bug
+description: Ajude a reproduzir e corrigir um problema.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por relatar. Não inclua endereço BLE completo, payload bruto,
+        arquivo de backup, nome de perfil ou outro dado pessoal.
+  - type: textarea
+    id: summary
+    attributes:
+      label: O que aconteceu?
+      description: Descreva o comportamento observado.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Como reproduzir
+      description: Informe os passos mínimos, um por linha.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: O que deveria acontecer?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área afetada
+      options:
+        - Medição BLE
+        - Registro manual
+        - Histórico ou gráfico
+        - Perfil ou meta
+        - Relatório, backup ou compartilhamento
+        - Health Connect
+        - Tema, acessibilidade ou navegação
+        - Build, teste ou documentação
+        - Outra
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: Versão do app
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Aparelho e versão Android
+      placeholder: "Ex.: Pixel 8, Android 16"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs ou detalhes adicionais
+      description: Remova dados pessoais e endereços BLE antes de enviar.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Confirmações
+      options:
+        - label: Pesquisei issues existentes.
+          required: true
+        - label: Removi dados pessoais, endereços BLE e payloads identificáveis.
+          required: true

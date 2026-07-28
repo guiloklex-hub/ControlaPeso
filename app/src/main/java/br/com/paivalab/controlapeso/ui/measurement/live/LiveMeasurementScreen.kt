@@ -3,6 +3,7 @@ package br.com.paivalab.controlapeso.ui.measurement.live
 import android.media.AudioManager
 import android.media.ToneGenerator
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -20,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -30,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
@@ -37,7 +41,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import br.com.paivalab.controlapeso.R
 import br.com.paivalab.controlapeso.bluetooth.BlePermissionStatus
 import br.com.paivalab.controlapeso.bluetooth.BleSupportStatus
@@ -45,6 +48,9 @@ import br.com.paivalab.controlapeso.bluetooth.BluetoothPowerStatus
 import br.com.paivalab.controlapeso.bluetooth.BleScanError
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.domain.usecase.measurement.SaveBleResult
+import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
+import br.com.paivalab.controlapeso.ui.designsystem.components.ErrorState
+import br.com.paivalab.controlapeso.ui.designsystem.components.StatusPill
 import kotlinx.coroutines.delay
 
 @Composable
@@ -109,30 +115,43 @@ fun LiveMeasurementScreen(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
-        LazyColumn(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(innerPadding)
         ) {
+            val horizontalPadding = when {
+                maxWidth >= 840.dp ->
+                    ControlaPesoDesignSystem.sizes.expandedContentPadding
+                maxWidth >= 600.dp ->
+                    ControlaPesoDesignSystem.sizes.mediumContentPadding
+                else -> ControlaPesoDesignSystem.sizes.compactContentPadding
+            }
+            LazyColumn(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxSize()
+                    .widthIn(max = 760.dp),
+                contentPadding = PaddingValues(
+                    horizontal = horizontalPadding,
+                    vertical = ControlaPesoDesignSystem.spacing.lg
+                ),
+                verticalArrangement = Arrangement.spacedBy(
+                    ControlaPesoDesignSystem.spacing.md
+                )
+            ) {
         item {
             Text(
                 stringResource(R.string.live_measurement_title),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.headlineLarge
             )
         }
         if (demoMode) {
             item {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        stringResource(R.string.demo_debug_notice),
-                        modifier = Modifier.padding(16.dp),
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                StatusPill(
+                    text = stringResource(R.string.demo_debug_notice),
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         }
         item {
@@ -171,15 +190,13 @@ fun LiveMeasurementScreen(
         }
         if (state.error != null || state.saveError != null) {
             item {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = state.error?.let { liveScanErrorText(it) }
-                            ?: state.saveError?.let { liveSaveErrorText(it) }
-                            ?: stringResource(R.string.live_error),
-                        modifier = Modifier.padding(16.dp),
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
+                val message = state.error?.let { liveScanErrorText(it) }
+                    ?: state.saveError?.let { liveSaveErrorText(it) }
+                    ?: stringResource(R.string.live_error)
+                ErrorState(
+                    title = stringResource(R.string.live_error),
+                    body = message
+                )
             }
         }
         item {
@@ -198,7 +215,8 @@ fun LiveMeasurementScreen(
                         state.profiles.isNotEmpty() &&
                         state.bluetoothSupport == BleSupportStatus.SUPPORTED &&
                         state.bluetoothPower == BluetoothPowerStatus.ON &&
-                        state.permissionStatus == BlePermissionStatus.GRANTED
+                        state.permissionStatus == BlePermissionStatus.GRANTED,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(stringResource(R.string.start_measurement))
                 }
@@ -264,6 +282,7 @@ fun LiveMeasurementScreen(
             }
         }
     }
+        }
     }
 
     if (state.probableDuplicate) {
@@ -305,14 +324,32 @@ fun LiveMeasurementScreen(
 
 @Composable
 private fun EnvironmentSummary(state: BleMeasurementUiState) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier.padding(ControlaPesoDesignSystem.spacing.md),
+            verticalArrangement = Arrangement.spacedBy(
+                ControlaPesoDesignSystem.spacing.xs
+            )
         ) {
-            Text(
+            StatusPill(
                 text = liveStatusText(state.status),
-                style = MaterialTheme.typography.titleMedium
+                color = when (state.status) {
+                    LiveMeasurementStatus.STABLE,
+                    LiveMeasurementStatus.SAVED ->
+                        ControlaPesoDesignSystem.colors.stable
+                    LiveMeasurementStatus.SEARCHING,
+                    LiveMeasurementStatus.WAITING_FOR_WEIGHT,
+                    LiveMeasurementStatus.RECEIVING ->
+                        ControlaPesoDesignSystem.colors.measuring
+                    LiveMeasurementStatus.ERROR,
+                    LiveMeasurementStatus.BLUETOOTH_OFF ->
+                        MaterialTheme.colorScheme.error
+                    else -> ControlaPesoDesignSystem.colors.informational
+                }
             )
             Text(
                 text = when {
@@ -339,10 +376,16 @@ private fun UnitConfirmation(
     onConfirm: (WeightUnit) -> Unit,
     onClear: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(ControlaPesoDesignSystem.spacing.md),
+            verticalArrangement = Arrangement.spacedBy(
+                ControlaPesoDesignSystem.spacing.xs
+            )
         ) {
             Text(
                 stringResource(R.string.ble_unit_title),
@@ -376,10 +419,17 @@ private fun UnitConfirmation(
 @Composable
 private fun MeasurementCard(state: BleMeasurementUiState) {
     val reading = state.latestReading
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
         Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(ControlaPesoDesignSystem.spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(
+                ControlaPesoDesignSystem.spacing.sm
+            )
         ) {
             Text(
                 text = reading?.let {
@@ -389,8 +439,12 @@ private fun MeasurementCard(state: BleMeasurementUiState) {
                 } ?: stringResource(R.string.waiting_for_scale),
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center,
-                fontSize = if (reading == null) 22.sp else 42.sp,
-                fontWeight = FontWeight.Bold
+                style = if (reading == null) {
+                    MaterialTheme.typography.headlineSmall
+                } else {
+                    MaterialTheme.typography.displayLarge
+                },
+                color = MaterialTheme.colorScheme.onPrimaryContainer
             )
             val progress = state.stability
             LinearProgressIndicator(

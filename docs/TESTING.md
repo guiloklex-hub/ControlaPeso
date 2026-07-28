@@ -51,6 +51,26 @@ os quatro smoke tests Compose falharam sem hierarquia de UI enquanto
 `isKeyguardShowing=true`. Isso não aponta uma falha do app, mas a repetição
 final deve ocorrer com a tela desbloqueada e acesa.
 
+## Checkpoint de distribuição v1.0.0
+
+Em 28/07/2026, com JDK 21 e a configuração de assinatura de release:
+
+```bash
+./gradlew clean test lint assembleDebug assembleRelease bundleRelease \
+  assembleInstrumentedAndroidTest
+./gradlew connectedAndroidTest
+```
+
+O primeiro comando concluiu com sucesso em 172 tarefas; gerou debug, APKs
+release universal/por ABI, AAB e APK de testes. O lint continuou sem erros e
+com 21 avisos não bloqueantes já documentados. Os cinco APKs release foram
+validados com `apksigner` e usam o certificado SHA-256 publicado no checklist.
+
+No Samsung `SM-S908E`, Android 16/API 36, o APK universal release instalou,
+iniciou a frio em 703 ms e permaneceu em execução sem `FATAL EXCEPTION`.
+Depois, `connectedAndroidTest` executou 19/19 testes pela variante isolada
+`instrumented`, preservando o package release principal.
+
 Cobertura unitária inclui:
 
 - hexadecimal, little-endian, parsers Chipsea e OKOK com capturas douradas;

@@ -3,11 +3,8 @@ package br.com.paivalab.controlapeso.ui.measurement.edit
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -27,6 +24,8 @@ import br.com.paivalab.controlapeso.R
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.domain.usecase.measurement.ManualValidationError
 import br.com.paivalab.controlapeso.ui.components.BrazilianDateTextField
+import br.com.paivalab.controlapeso.ui.designsystem.components.EmptyState
+import br.com.paivalab.controlapeso.ui.designsystem.components.ResponsiveScreenList
 
 @Composable
 fun ManualMeasurementScreen(
@@ -52,12 +51,9 @@ fun ManualMeasurementScreen(
         }
     }
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .imePadding(),
-        contentPadding = PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ResponsiveScreenList(
+        modifier = modifier.imePadding(),
+        maxContentWidth = 720.dp
     ) {
         item {
             Text(
@@ -65,15 +61,19 @@ fun ManualMeasurementScreen(
                     if (editing) R.string.edit_measurement_title
                     else R.string.manual_measurement_title
                 ),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.headlineLarge
+            )
+            Text(
+                stringResource(R.string.manual_measurement_body),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         if (state.profiles.isEmpty()) {
             item {
-                Text(
-                    stringResource(R.string.profile_required_before_measurement),
-                    color = MaterialTheme.colorScheme.error
+                EmptyState(
+                    title = stringResource(R.string.manual_profile_required_title),
+                    body = stringResource(R.string.profile_required_before_measurement)
                 )
             }
         } else {

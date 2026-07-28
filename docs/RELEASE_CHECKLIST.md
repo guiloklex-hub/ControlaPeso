@@ -1,5 +1,23 @@
 # Checklist de release
 
+## Checkpoint de distribuição v1.0.0 — 28/07/2026
+
+- [x] `clean test lint assembleDebug assembleRelease bundleRelease`
+- [x] APK universal e APKs `arm64-v8a`, `armeabi-v7a`, `x86_64` e `x86`
+  compilados e assinados
+- [x] AAB assinado compilado
+- [x] assinatura v2 e certificado SHA-256 conferidos com `apksigner`
+- [x] `connectedAndroidTest`: 19/19 no Samsung SM-S908E/API 36
+- [x] APK universal release instalado e iniciado a frio no Samsung SM-S908E/API 36
+- [x] `git diff --check`
+- [ ] roteiro BLE completo com comparação de visor, salvamento e repetição
+- [ ] PDF/CSV/JSON, Sharesheet, SAF, Health Connect, lembretes e TalkBack no
+  artefato release
+
+O release não declara concluídos os testes físicos pendentes. A chave de
+assinatura fica fora do Git; o certificado publicado tem SHA-256
+`CC:07:DD:7F:E3:2E:BE:8E:CB:35:30:BD:84:FD:E3:12:5E:B6:A9:D3:34:5A:AF:75:13:98:0D:32:B9:48:83:73`.
+
 ## Checkpoint local de 27/07/2026
 
 - [x] build limpo, testes JVM, lint, debug e release

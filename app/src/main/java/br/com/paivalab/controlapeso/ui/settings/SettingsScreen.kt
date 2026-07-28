@@ -1,7 +1,8 @@
 package br.com.paivalab.controlapeso.ui.settings
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,16 +10,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +39,8 @@ import br.com.paivalab.controlapeso.data.preferences.HistoryPeriod
 import br.com.paivalab.controlapeso.data.preferences.ThemeMode
 import br.com.paivalab.controlapeso.data.preferences.VisualEffects
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
+import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
+import br.com.paivalab.controlapeso.ui.designsystem.components.SettingsItem
 
 @Composable
 fun SettingsScreen(
@@ -101,18 +105,33 @@ fun SettingsScreen(
         }
     }
 
-    Column(modifier.fillMaxSize()) {
-        SnackbarHost(snackbarHostState)
+    BoxWithConstraints(
+        modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        val horizontalPadding = when {
+            maxWidth >= 840.dp -> ControlaPesoDesignSystem.sizes.expandedContentPadding
+            maxWidth >= 600.dp -> ControlaPesoDesignSystem.sizes.mediumContentPadding
+            else -> ControlaPesoDesignSystem.sizes.compactContentPadding
+        }
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxSize()
+                .widthIn(max = 840.dp),
+            contentPadding = PaddingValues(
+                horizontal = horizontalPadding,
+                vertical = ControlaPesoDesignSystem.spacing.lg
+            ),
+            verticalArrangement = Arrangement.spacedBy(
+                ControlaPesoDesignSystem.spacing.md
+            )
         ) {
             item {
                 Text(
                     stringResource(R.string.settings_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.headlineLarge
                 )
             }
             item {
@@ -403,19 +422,16 @@ fun SettingsScreen(
                     R.string.about_title to onAbout
                 )
             ) { (label, action) ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = action)
-                ) {
-                    Text(
-                        text = stringResource(label),
-                        modifier = Modifier.padding(18.dp),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
+                SettingsItem(
+                    title = stringResource(label),
+                    onClick = action
+                )
             }
         }
+        SnackbarHost(
+            snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 
@@ -485,13 +501,26 @@ private fun NumberStepper(
 
 @Composable
 private fun SettingsSection(title: String, content: @Composable () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(
+            ControlaPesoDesignSystem.spacing.xs
+        )
+    ) {
+        Text(title, style = MaterialTheme.typography.titleLarge)
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surfaceContainerLow
         ) {
-            Text(title, style = MaterialTheme.typography.titleLarge)
+        Column(
+            modifier = Modifier.padding(ControlaPesoDesignSystem.spacing.md),
+            verticalArrangement = Arrangement.spacedBy(
+                ControlaPesoDesignSystem.spacing.sm
+            )
+        ) {
             content()
+        }
         }
     }
 }
@@ -503,7 +532,9 @@ private fun SettingSwitch(
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = ControlaPesoDesignSystem.spacing.xxs),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {

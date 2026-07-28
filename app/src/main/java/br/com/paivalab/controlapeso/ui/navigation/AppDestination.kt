@@ -13,27 +13,37 @@ import br.com.paivalab.controlapeso.R
 sealed class AppDestination(
     val route: String,
     @param:StringRes val labelRes: Int,
+    @param:StringRes val compactLabelRes: Int = labelRes,
     val icon: ImageVector? = null
 ) {
-    data object Dashboard : AppDestination("dashboard", R.string.nav_dashboard, Icons.Filled.Home)
+    data object Dashboard : AppDestination(
+        "dashboard",
+        R.string.nav_dashboard,
+        R.string.nav_dashboard_compact,
+        Icons.Filled.Home
+    )
     data object History : AppDestination(
         "history",
         R.string.nav_history,
+        R.string.nav_history_compact,
         Icons.AutoMirrored.Filled.List
     )
     data object Measure : AppDestination(
         "measure",
         R.string.nav_measure,
+        R.string.nav_measure_compact,
         Icons.Filled.AddCircle
     )
     data object Reports : AppDestination(
         "reports",
         R.string.nav_reports,
+        R.string.nav_reports_compact,
         Icons.Filled.Info
     )
     data object Settings : AppDestination(
         "settings",
         R.string.nav_settings,
+        R.string.nav_settings_compact,
         Icons.Filled.Settings
     )
     data object Diagnostic : AppDestination("diagnostic", R.string.bluetooth_diagnostic)

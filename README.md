@@ -1,143 +1,142 @@
-# Controla Peso
+<p align="center">
+  <img src="docs/assets/controla-peso-icon.svg" width="104" alt="Ícone do Controla Peso">
+</p>
 
-Aplicativo Android nativo, local-first e offline-first para registrar peso por
-uma balança BLE compatível com o advertising observado no OKOK International
-ou por entrada manual. Não exige conta, não possui anúncios, analytics,
-telemetria ou servidor e não declara permissão de Internet.
+<h1 align="center">Controla Peso</h1>
+
+<p align="center">
+  <img src="docs/assets/controla-peso-banner.svg" alt="Controla Peso: seu peso, seus dados, no seu dispositivo" width="720">
+</p>
+
+<p align="center">
+  Acompanhamento de peso local, privado e offline-first para Android.
+</p>
+
+<p align="center">
+  <a href="https://github.com/guiloklex-hub/ControlaPeso/actions/workflows/ci.yml"><img src="https://github.com/guiloklex-hub/ControlaPeso/actions/workflows/ci.yml/badge.svg" alt="Android CI"></a>
+  <a href="https://github.com/guiloklex-hub/ControlaPeso/releases"><img src="https://img.shields.io/github/v/release/guiloklex-hub/ControlaPeso?display_name=tag&sort=semver" alt="Último release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/guiloklex-hub/ControlaPeso" alt="Licença Apache 2.0"></a>
+  <a href="https://github.com/guiloklex-hub/ControlaPeso/issues"><img src="https://img.shields.io/github/issues/guiloklex-hub/ControlaPeso" alt="Issues abertas"></a>
+</p>
 
 > O Controla Peso não é um dispositivo médico. Ele registra peso e apresenta
-> estatísticas neutras. Métricas não recebidas da balança permanecem ausentes.
+> tendências neutras; métricas não confirmadas pelo protocolo permanecem ausentes.
 
-## Estado do projeto
+## Por que existe
 
-- Captura BLE ampla, sem conexão GATT, preservada do baseline funcional.
-- Parser da variante `Yoda1`/OKOK C0 preservado por testes dourados.
-- Unidade anunciada bloqueada até confirmação no visor físico.
-- Estabilidade determinada por uma janela de leituras, nunca apenas por
-  `property = 0x25`.
-- Histórico local Room, perfis, metas, dashboard, gráfico e edição.
-- PDF, CSV e backup/restauração JSON gerados localmente.
-- Compartilhamento por Sharesheet com `content://` via `FileProvider`.
-- Health Connect opcional, inicialmente somente escrita de peso.
-- Lembretes aproximados via WorkManager, sem alarmes exatos e sem scan em
-  segundo plano.
-- Modo de demonstração disponível somente em build debug.
+Controla Peso é uma alternativa Android nativa para registrar peso sem conta,
+Internet, anúncios, analytics, telemetria ou servidor. Ele recebe anúncios BLE
+observados em balanças compatíveis com o fluxo do OKOK International e também
+permite registros manuais.
 
-## Requisitos
+Os dados permanecem no dispositivo. Exportação, relatório, backup e Health
+Connect só ocorrem após uma ação explícita da pessoa usuária.
 
-- Android Studio compatível com AGP 9.3.1;
-- JDK 21;
-- Android SDK 36, minor API 1;
-- telefone ou emulador Android 7.0/API 24 ou superior;
-- telefone físico com BLE para testar a balança.
+## Recursos
 
-O projeto preserva Gradle 9.5.0, Kotlin 2.2.10, Compose BOM 2026.02.01,
-`compileSdk 36.1`, `targetSdk 36` e `minSdk 24`.
+- Leitura BLE por advertising, sem conexão GATT especulativa.
+- Parser defensivo, payload bruto preservado e diagnóstico técnico opcional.
+- Histórico local Room, múltiplos perfis, metas, gráficos e tendências.
+- Registro manual com máscara de data brasileira `DD-MM-AAAA`.
+- Relatórios PDF/CSV, backup JSON, Sharesheet e SAF.
+- Health Connect opcional e somente para escrita de peso.
+- Tema claro, escuro, sistema, cores dinâmicas e efeitos visuais reduzidos.
+- Layout adaptável para celulares, tablets, dobra, paisagem e tela dividida.
 
-## Abrir e compilar
+## Instalação
 
-Abra esta pasta no Android Studio ou execute, na raiz:
+Baixe os artefatos no [último release](https://github.com/guiloklex-hub/ControlaPeso/releases/latest).
+
+| Artefato | Indicado para |
+|---|---|
+| `ControlaPeso-vX.Y.Z-universal.apk` | Opção mais simples; inclui ARM e x86. |
+| `ControlaPeso-vX.Y.Z-arm64-v8a.apk` | Quase todos os celulares Android atuais. |
+| `ControlaPeso-vX.Y.Z-armeabi-v7a.apk` | Celulares Android mais antigos de 32 bits. |
+| `ControlaPeso-vX.Y.Z-x86_64.apk` | Emuladores e alguns dispositivos ChromeOS. |
+| `ControlaPeso-vX.Y.Z-x86.apk` | Emuladores legados. |
+| `ControlaPeso-vX.Y.Z.aab` | Publicação em lojas compatíveis com Android App Bundle. |
+
+O app exige Android 7.0 / API 24 ou superior. Verifique `SHA256SUMS.txt` antes
+de instalar um APK. Consulte [Distribuição](docs/DISTRIBUTION.md) para detalhes
+de compatibilidade e assinatura.
+
+## Uso rápido com a balança
+
+1. Feche completamente o OKOK International.
+2. Ative Bluetooth e conceda as permissões necessárias.
+3. Em **Medir**, escolha **Medir com a balança** e inicie a busca.
+4. Suba na balança e espere a leitura ficar estável.
+5. Compare valor e unidade com o visor físico antes de salvar.
+
+O scanner não filtra nome ou UUID na descoberta. Dispositivos não reconhecidos
+continuam visíveis para diagnóstico, mas o app não conecta nem escreve em uma
+balança automaticamente.
+
+## Desenvolvimento
+
+Pré-requisitos: JDK 21, Android SDK 36.1 e Android Studio compatível com AGP
+9.3.1. As versões de Gradle, AGP, Kotlin e Compose são deliberadamente
+preservadas; consulte [Dependências](docs/DEPENDENCIES.md).
 
 ```bash
 ./gradlew test
 ./gradlew lint
 ./gradlew assembleDebug
+./gradlew assembleRelease
 ```
 
-O APK é criado em:
-
-```text
-app/build/outputs/apk/debug/app-debug.apk
-```
-
-## Instalar
-
-Com a depuração USB autorizada:
+Com um telefone ou emulador autorizado:
 
 ```bash
-adb devices -l
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-adb shell am force-stop br.com.paivalab.controlapeso
-adb shell monkey -p br.com.paivalab.controlapeso 1
+./gradlew connectedAndroidTest
 ```
 
-No primeiro uso, conclua ou pule o onboarding. Para uma medição real, crie um
-perfil, feche o OKOK International, abra **Medir > Medir com a balança**,
-confirme a unidade comparando com o visor e inicie a busca.
-
-## Testar a balança
-
-1. Feche completamente o OKOK International.
-2. Ative Bluetooth e conceda Dispositivos próximos; em Android 11 ou anterior,
-   conceda Localização durante o uso.
-3. Inicie a medição no Controla Peso.
-4. Suba na balança e permaneça parado até a indicação textual de estabilidade.
-5. Compare o valor e a unidade com o visor antes de confirmar e salvar.
-6. Use **Ajustes > Diagnóstico Bluetooth** para copiar ou compartilhar a
-   captura técnica; masque o endereço ao enviar o arquivo.
-
-Logs detalhados precisam ser ativados em **Ajustes > Diagnóstico** e só estão
-disponíveis em debug:
+O APK debug fica em `app/build/outputs/apk/debug/`. Para instalar:
 
 ```bash
-adb logcat -s ControlaPesoBLE:D
+adb install -r app/build/outputs/apk/debug/app-universal-debug.apk
 ```
 
-## Arquitetura resumida
+## Arquitetura e privacidade
 
 ```text
-Compose UI
-    ↓ ações / StateFlow
-ViewModels
-    ↓ casos de uso e repositories
-Room + DataStore + exportadores + Health Connect
-    ↑
-BleMeasurementSource
-    ↑
-BleScanner → OkOkAdvertisementParser → StableMeasurementDetector
+Compose UI → ViewModels/StateFlow → casos de uso → repositories
+                                           ├── Room / DataStore / exportação
+                                           └── BLE scanner → parser → detector de estabilidade
 ```
 
-`AppContainer` faz composição manual das dependências; não há framework de
-injeção. O scanner e os parsers não dependem de Composables. O banco armazena
-peso canônico em kg, `Instant`, offset original, origem e payload bruto quando
-ele realmente existe.
-
-## Privacidade
-
-- Dados privados ficam no banco e DataStore internos.
-- Backup automático do Android está desativado.
-- Relatórios só são criados após ação do usuário e ficam no cache por tempo
-  limitado, salvo quando o usuário escolhe um destino pelo SAF.
-- Health Connect recebe apenas peso, horário, offset e metadados mínimos após
-  permissão explícita; payload, endereço e observação não são enviados.
-- Excluir dados do aplicativo não apaga registros já gravados no Health
-  Connect.
-
-## Documentação
+O scanner BLE e os parsers não dependem de Composables. O app não declara a
+permissão `INTERNET`; não há backend nem SDK proprietário.
 
 - [Arquitetura](docs/ARCHITECTURE.md)
-- [Protocolo BLE](docs/BLE_PROTOCOL.md)
-- [Diagnóstico BLE](docs/BLE_DIAGNOSTIC.md)
-- [Banco e backup](docs/DATABASE_AND_BACKUP.md)
-- [Dependências](docs/DEPENDENCIES.md)
-- [Formatos de relatório](docs/REPORT_FORMATS.md)
+- [Protocolo e evidências BLE](docs/BLE_PROTOCOL_AND_CONNECTION.md)
 - [Privacidade](docs/PRIVACY.md)
+- [Diagnóstico BLE](docs/BLE_DIAGNOSTIC.md)
 - [Testes](docs/TESTING.md)
-- [Entrega e inventário](docs/IMPLEMENTATION_DELIVERY.md)
-- [Matriz de teste físico](docs/PHYSICAL_TEST_MATRIX.md)
-- [Checklist de release](docs/RELEASE_CHECKLIST.md)
+- [Distribuição e releases](docs/DISTRIBUTION.md)
 
-## Limitações
+## Estado e limitações
 
-- A unidade e os limites de estabilidade ainda exigem nova validação física.
-- O formato OKOK C0 foi confirmado somente na balança `Yoda1` observada.
-- O valor secundário e as flags desconhecidas não são tratados como
-  composição corporal.
-- Não existe conexão GATT: a balança observada transmite peso por advertising.
-- Health Connect exige API 26; Android 7/API 24–25 continua funcional sem essa
-  integração.
-- Testes de BLE, compartilhamento, notificações, Health Connect e TalkBack
-  precisam de telefone físico.
+O formato C0 foi validado apenas com a balança Yoda1 observada. O app não
+infere composição corporal, unidade ou estabilidade sem evidência física. Antes
+de mudar o parser ou os limites, siga a [validação física BLE](docs/BLE_PHYSICAL_VALIDATION.md).
 
-Consulte [BLE_PHYSICAL_VALIDATION.md](docs/BLE_PHYSICAL_VALIDATION.md) antes de
-alterar unidade, parser ou critérios de estabilidade.
+O Health Connect exige API 26, mas as demais funções permanecem disponíveis em
+API 24–25. Testes de balança, compartilhamento, notificações, Health Connect e
+TalkBack dependem de telefone físico.
+
+## Comunidade
+
+Contribuições são bem-vindas, especialmente testes de compatibilidade e
+capturas BLE com consentimento e dados minimizados.
+
+- [Como contribuir](CONTRIBUTING.md)
+- [Código de conduta](CODE_OF_CONDUCT.md)
+- [Política de segurança](SECURITY.md)
+- [Changelog](CHANGELOG.md)
+- [Documentação completa](docs/README.md)
+
+## Licença
+
+Distribuído sob a [Apache License 2.0](LICENSE). Ao contribuir, você concorda
+que sua contribuição poderá ser distribuída sob essa mesma licença.

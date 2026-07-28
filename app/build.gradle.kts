@@ -5,6 +5,22 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+val releaseStoreFile = providers.gradleProperty("RELEASE_STORE_FILE").orNull
+val releaseStorePassword = providers.gradleProperty("RELEASE_STORE_PASSWORD").orNull
+val releaseKeyAlias = providers.gradleProperty("RELEASE_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.gradleProperty("RELEASE_KEY_PASSWORD").orNull
+val releaseSigningValues = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword
+)
+val hasReleaseSigning = releaseSigningValues.all { !it.isNullOrBlank() }
+
+require(releaseSigningValues.all { it.isNullOrBlank() } || hasReleaseSigning) {
+    "Configure all RELEASE_* Gradle properties or none of them."
+}
+
 android {
     namespace = "br.com.paivalab.controlapeso"
     compileSdk {
@@ -18,13 +34,23 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     testBuildType = "instrumented"
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
     buildTypes {
         create("instrumented") {
             initWith(getByName("debug"))
@@ -32,9 +58,20 @@ android {
             matchingFallbacks += listOf("debug")
         }
         release {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             optimization {
                 enable = false
             }
+        }
+    }
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            isUniversalApk = true
         }
     }
     compileOptions {

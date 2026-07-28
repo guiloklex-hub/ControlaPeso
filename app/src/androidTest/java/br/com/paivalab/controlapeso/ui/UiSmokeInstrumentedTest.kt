@@ -199,6 +199,44 @@ class UiSmokeInstrumentedTest {
         composeRule.onNodeWithText("Adicionar manualmente").assertIsDisplayed()
     }
 
+    @Test
+    fun largeFontUsesDistinctCompactNavigationLabels() {
+        val application = InstrumentationRegistry.getInstrumentation()
+            .targetContext.applicationContext as ControlaPesoApplication
+        val scannerViewModel = ScannerViewModel(application)
+        composeRule.setContent {
+            val density = LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                LocalDensity provides Density(density.density, fontScale = 2f)
+            ) {
+                ControlaPesoTheme(dynamicColor = false) {
+                    Box(Modifier.fillMaxSize().width(360.dp)) {
+                        ControlaPesoNavHost(
+                            container = application.container,
+                            scannerViewModel = scannerViewModel,
+                            onRequestBlePermissions = {},
+                            onShareText = {},
+                            onCopyText = {},
+                            onShareFile = {}
+                        )
+                    }
+                }
+            }
+        }
+
+        val labels = listOf("Início", "Hist.", "Medir", "Relat.", "Ajust.")
+        val bounds = labels.map { label ->
+            composeRule.onNodeWithText(label, useUnmergedTree = true)
+                .assertIsDisplayed()
+                .fetchSemanticsNode()
+                .boundsInRoot
+        }
+
+        bounds.zipWithNext().forEach { (left, right) ->
+            assertTrue("Navigation labels overlap at font scale 2.0", left.right <= right.left)
+        }
+    }
+
     private fun profile(): Profile {
         val instant = Instant.parse("2026-07-27T12:00:00Z")
         return Profile(

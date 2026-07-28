@@ -1,6 +1,6 @@
 package br.com.paivalab.controlapeso.ui.history
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -11,13 +11,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +40,14 @@ import br.com.paivalab.controlapeso.data.preferences.ChartSize
 import br.com.paivalab.controlapeso.data.preferences.HistoryGrouping
 import br.com.paivalab.controlapeso.ui.components.BrazilianDateTextField
 import br.com.paivalab.controlapeso.ui.components.WeightChart
+import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
+import br.com.paivalab.controlapeso.ui.designsystem.components.EmptyState
+import br.com.paivalab.controlapeso.ui.designsystem.components.ErrorState
+import br.com.paivalab.controlapeso.ui.designsystem.components.LoadingState
+import br.com.paivalab.controlapeso.ui.designsystem.components.MeasurementListItem
+import br.com.paivalab.controlapeso.ui.designsystem.components.MetricTile
+import br.com.paivalab.controlapeso.ui.designsystem.components.SectionHeader
+import br.com.paivalab.controlapeso.ui.designsystem.components.StatusPill
 import java.time.format.DateTimeFormatter
 import java.time.YearMonth
 import java.util.Locale
@@ -60,18 +70,34 @@ fun HistoryScreen(
         ChartSize.LARGE -> 320.dp
     }
     val reversedMeasurements = state.measurements.asReversed()
-    BoxWithConstraints(modifier.fillMaxSize()) {
+    BoxWithConstraints(
+        modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         val expanded = maxWidth >= 840.dp
+        val horizontalPadding = when {
+            maxWidth >= 840.dp -> ControlaPesoDesignSystem.sizes.expandedContentPadding
+            maxWidth >= 600.dp -> ControlaPesoDesignSystem.sizes.mediumContentPadding
+            else -> ControlaPesoDesignSystem.sizes.compactContentPadding
+        }
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxSize()
+                .widthIn(max = ControlaPesoDesignSystem.sizes.contentMaxWidth),
+            contentPadding = PaddingValues(
+                horizontal = horizontalPadding,
+                vertical = ControlaPesoDesignSystem.spacing.lg
+            ),
+            verticalArrangement = Arrangement.spacedBy(
+                ControlaPesoDesignSystem.spacing.md
+            )
         ) {
             item {
                 Text(
                     stringResource(R.string.history_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.headlineLarge
                 )
             }
             item {
@@ -127,25 +153,34 @@ fun HistoryScreen(
                 }
             }
             if (state.isLoading) {
-                item { CircularProgressIndicator() }
+                item { LoadingState(stringResource(R.string.loading_data)) }
             } else if (state.hasError) {
                 item {
-                    Text(
-                        stringResource(R.string.data_load_error),
-                        color = MaterialTheme.colorScheme.error
+                    ErrorState(
+                        title = stringResource(R.string.data_load_error),
+                        body = stringResource(R.string.data_load_error)
                     )
                 }
             } else if (state.profile == null) {
-                item { Text(stringResource(R.string.dashboard_no_profile)) }
+                item {
+                    EmptyState(
+                        title = stringResource(R.string.dashboard_no_profile),
+                        body = stringResource(R.string.dashboard_no_profile)
+                    )
+                }
             } else if (state.measurements.isEmpty()) {
-                item { Text(stringResource(R.string.history_empty)) }
+                item {
+                    EmptyState(
+                        title = stringResource(R.string.history_empty),
+                        body = stringResource(R.string.history_empty)
+                    )
+                }
             } else {
                 if (state.measurements.any { it.source == MeasurementSource.DEMO }) {
                     item {
-                        Text(
-                            stringResource(R.string.history_contains_demo),
-                            color = MaterialTheme.colorScheme.error,
-                            fontWeight = FontWeight.Bold
+                        StatusPill(
+                            text = stringResource(R.string.history_contains_demo),
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
                 }
@@ -227,7 +262,20 @@ private fun ChartCard(
     modifier: Modifier = Modifier
 ) {
     val unit = state.profile?.preferredWeightUnit ?: state.preferences.defaultWeightUnit
-    Card(modifier = modifier.fillMaxWidth()) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        SectionHeader(
+            title = stringResource(R.string.history_title),
+            modifier = Modifier.padding(
+                start = 16.dp,
+                top = 16.dp,
+                end = 16.dp
+            )
+        )
         WeightChart(
             measurements = state.measurements,
             unit = unit,
@@ -251,57 +299,55 @@ private fun StatisticsCard(
 ) {
     val stats = state.statistics ?: return
     val unit = state.profile?.preferredWeightUnit ?: state.preferences.defaultWeightUnit
-    Card(modifier = modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                stringResource(R.string.period_summary),
-                style = MaterialTheme.typography.titleLarge
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(
+            ControlaPesoDesignSystem.spacing.sm
+        )
+    ) {
+        SectionHeader(stringResource(R.string.period_summary))
+        MetricTile(
+            label = stringResource(R.string.period_summary),
+            value = stringResource(
+                R.string.statistics_first_last,
+                unit.fromKilograms(stats.firstWeightKg),
+                unit.fromKilograms(stats.lastWeightKg),
+                unit.symbol
+            ),
+            modifier = Modifier.fillMaxWidth(),
+            supportingText = stringResource(
+                R.string.statistics_variation,
+                unit.fromKilograms(stats.absoluteVariationKg),
+                unit.symbol,
+                stats.percentageVariation ?: 0.0
             )
-            Text(
-                stringResource(
-                    R.string.statistics_first_last,
-                    unit.fromKilograms(stats.firstWeightKg),
-                    unit.fromKilograms(stats.lastWeightKg),
-                    unit.symbol
-                )
-            )
-            Text(
-                stringResource(
-                    R.string.statistics_variation,
-                    unit.fromKilograms(stats.absoluteVariationKg),
-                    unit.symbol,
-                    stats.percentageVariation ?: 0.0
-                )
-            )
-            Text(
-                stringResource(
-                    R.string.statistics_average,
-                    unit.fromKilograms(stats.averageWeightKg),
-                    unit.symbol
-                )
-            )
-            Text(
-                stringResource(
-                    R.string.statistics_min_max,
-                    unit.fromKilograms(stats.minimumWeightKg),
-                    unit.fromKilograms(stats.maximumWeightKg),
-                    unit.symbol
-                )
-            )
-            Text(
-                pluralStringResource(
-                    R.plurals.statistics_count,
-                    stats.measurementCount,
-                    stats.measurementCount
-                )
-            )
-            stats.averageFrequencyDays?.let {
-                Text(stringResource(R.string.statistics_frequency, it))
+        )
+        MetricTile(
+            label = pluralStringResource(
+                R.plurals.statistics_count,
+                stats.measurementCount,
+                stats.measurementCount
+            ),
+            value = stringResource(
+                R.string.statistics_average,
+                unit.fromKilograms(stats.averageWeightKg),
+                unit.symbol
+            ),
+            modifier = Modifier.fillMaxWidth(),
+            supportingText = stats.averageFrequencyDays?.let {
+                stringResource(R.string.statistics_frequency, it)
             }
-        }
+        )
+        MetricTile(
+            label = stringResource(R.string.period_summary),
+            value = stringResource(
+                R.string.statistics_min_max,
+                unit.fromKilograms(stats.minimumWeightKg),
+                unit.fromKilograms(stats.maximumWeightKg),
+                unit.symbol
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -345,7 +391,11 @@ private fun ExpandedHistoryListDetail(
                 }
             }
         }
-        Card(modifier = Modifier.weight(1f)) {
+        Surface(
+            modifier = Modifier.weight(1f),
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surfaceContainerLow
+        ) {
             Column(
                 modifier = Modifier.padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -398,25 +448,13 @@ private fun HistoryMeasurementCard(
     unit: br.com.paivalab.controlapeso.domain.model.WeightUnit,
     onClick: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    unit.formatFromKilograms(measurement.weightKg),
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Text(formatMeasurementDateTime(measurement))
-            }
-            Text(sourceText(measurement.source))
-        }
-    }
+    MeasurementListItem(
+        value = unit.formatFromKilograms(measurement.weightKg),
+        dateTime = formatMeasurementDateTime(measurement),
+        source = sourceText(measurement.source),
+        note = measurement.note,
+        onClick = onClick
+    )
 }
 
 private fun formatMeasurementDateTime(measurement: WeightMeasurement): String =

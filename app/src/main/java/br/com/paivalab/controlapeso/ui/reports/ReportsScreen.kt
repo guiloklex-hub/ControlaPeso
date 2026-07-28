@@ -3,18 +3,15 @@ package br.com.paivalab.controlapeso.ui.reports
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,6 +26,10 @@ import br.com.paivalab.controlapeso.data.backup.RestoreMode
 import br.com.paivalab.controlapeso.data.export.ReportFormat
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.ui.components.BrazilianDateTextField
+import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
+import br.com.paivalab.controlapeso.ui.designsystem.components.ErrorState
+import br.com.paivalab.controlapeso.ui.designsystem.components.ResponsiveScreenList
+import br.com.paivalab.controlapeso.ui.designsystem.components.SettingsSection
 
 @Composable
 fun ReportsScreen(
@@ -54,25 +55,25 @@ fun ReportsScreen(
     onDismissMessage: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ResponsiveScreenList(
+        modifier = modifier,
+        maxContentWidth = 1_000.dp
     ) {
         item {
             Text(
                 stringResource(R.string.reports_title),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.headlineLarge
             )
-            Text(stringResource(R.string.reports_local_notice))
+            Text(
+                stringResource(R.string.reports_local_notice),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
+            SettingsSection(
+                title = stringResource(R.string.report_configuration_title),
+                supportingText = stringResource(R.string.report_configuration_body)
+            ) {
                     Text(stringResource(R.string.report_format), fontWeight = FontWeight.SemiBold)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ReportFormat.entries.forEach { format ->
@@ -167,15 +168,20 @@ fun ReportsScreen(
                             )
                         )
                     }
-                }
             }
         }
         state.generatedFile?.let { generated ->
             item {
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.padding(ControlaPesoDesignSystem.spacing.lg),
+                        verticalArrangement = Arrangement.spacedBy(
+                            ControlaPesoDesignSystem.spacing.xs
+                        )
                     ) {
                         Text(
                             stringResource(R.string.generated_file, generated.displayName),
@@ -207,30 +213,27 @@ fun ReportsScreen(
             }
         }
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        stringResource(R.string.backup_restore_title),
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Text(stringResource(R.string.backup_restore_body))
-                    OutlinedButton(onClick = onImport, enabled = !state.isWorking) {
-                        Text(stringResource(R.string.import_json))
-                    }
-                    TextButton(onClick = onClearTemporaryFiles) {
-                        Text(stringResource(R.string.clear_temporary_files))
-                    }
+            SettingsSection(
+                title = stringResource(R.string.backup_restore_title),
+                supportingText = stringResource(R.string.backup_restore_body)
+            ) {
+                OutlinedButton(onClick = onImport, enabled = !state.isWorking) {
+                    Text(stringResource(R.string.import_json))
+                }
+                TextButton(onClick = onClearTemporaryFiles) {
+                    Text(stringResource(R.string.clear_temporary_files))
                 }
             }
         }
         state.message?.let {
             item {
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
                     Row(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(ControlaPesoDesignSystem.spacing.md),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(reportMessageText(it), modifier = Modifier.weight(1f))
@@ -243,24 +246,13 @@ fun ReportsScreen(
         }
         state.error?.let {
             item {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            reportErrorText(it),
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        state.validationErrors.take(5).forEach { detail ->
-                            Text(
-                                detail,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    }
-                }
+                ErrorState(
+                    title = reportErrorText(it),
+                    body = state.validationErrors
+                        .take(5)
+                        .joinToString(separator = "\n")
+                        .ifBlank { reportErrorText(it) }
+                )
             }
         }
     }
