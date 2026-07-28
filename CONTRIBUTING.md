@@ -14,7 +14,7 @@ privacidade, rastreabilidade de dados BLE e uma experiência simples em Android.
 
 ## Ambiente local
 
-É necessário JDK 21 e Android SDK 36.1. Não atualize Gradle, AGP, Kotlin ou
+É necessário JDK 21 e Android SDK 37.1. Não atualize Gradle, AGP, Kotlin ou
 Compose apenas por conveniência; proponha e justifique a mudança em separado.
 
 ```bash

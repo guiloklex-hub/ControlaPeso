@@ -74,7 +74,7 @@ balança automaticamente.
 
 ## Desenvolvimento
 
-Pré-requisitos: JDK 21, Android SDK 36.1 e Android Studio compatível com AGP
+Pré-requisitos: JDK 21, Android SDK 37.1 e Android Studio compatível com AGP
 9.3.1. As versões de Gradle, AGP, Kotlin e Compose são deliberadamente
 preservadas; consulte [Dependências](docs/DEPENDENCIES.md).
 

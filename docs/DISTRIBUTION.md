@@ -52,7 +52,7 @@ são úteis para desenvolvimento, mas não são distribuídos como release está
 
 ## Reprodutibilidade
 
-O workflow de release usa JDK 21, Android SDK 36.1 e o Gradle Wrapper
+O workflow de release usa JDK 21, Android SDK 37.1 e o Gradle Wrapper
 versionado. Ele executa testes e lint antes de criar APKs por ABI, um APK
 universal, AAB e checksums.
 

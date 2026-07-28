@@ -24,7 +24,7 @@ require(releaseSigningValues.all { it.isNullOrBlank() } || hasReleaseSigning) {
 android {
     namespace = "br.com.paivalab.controlapeso"
     compileSdk {
-        version = release(36) {
+        version = release(37) {
             minorApiLevel = 1
         }
     }
