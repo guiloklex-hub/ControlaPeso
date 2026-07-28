@@ -131,5 +131,4 @@ Antes da criação dos componentes e frames comparativos, o conector passou a
 retornar `INVALID_ARGUMENT` inclusive para scripts somente de leitura e
 `get_metadata`. Assim, as três direções acima são especificações e matriz de
 decisão versionadas, mas não se afirma que seus frames finais existem no
-Figma. O bloqueio reproduzível e o escopo realmente criado estão registrados
-em `UI_UX_PROGRESS.md` e `DESIGN_SYSTEM.md`.
+Figma. O escopo realmente criado está documentado em `DESIGN_SYSTEM.md`.

@@ -17,3 +17,7 @@ local.properties
 *.jks
 *.keystore
 keystore.properties
+
+# Arquivos de planejamento e instruções locais de trabalho. Não fazem parte
+# da documentação pública do projeto e não devem ser publicados.
+/.local/
