@@ -48,6 +48,8 @@ As fases são:
 
 A mudança de modo para e reinicia o callback BLE, mas não reinicia o relógio
 total. Nenhum filtro por nome, endereço, UUID ou Manufacturer ID é usado.
+Na tela de diagnóstico, **Executar teste de comunicação** é apenas um atalho
+explícito para esse mesmo scan; não adiciona uma etapa GATT especulativa.
 
 O scan é interrompido por:
 
@@ -302,10 +304,15 @@ Comando:
 adb logcat -s ControlaPesoBLE:D
 ```
 
-O log registra estado do scan e campos técnicos necessários ao diagnóstico.
+O log sempre pode registrar estados e erros mínimos. Campos detalhados,
+endereço e payload são opt-in e somente em build debug; ative a opção em
+**Ajustes > Diagnóstico**. Release bloqueia esse corpo por `BuildConfig.DEBUG`.
 Antes de publicar um log, endereços Bluetooth devem ser mascarados de forma
 consistente. Não devem ser incluídos tokens, credenciais ou logs amplos de
 outros aplicativos.
+
+A tela técnica oferece cópia do payload e exportação com endereço mascarado
+por padrão. A versão atual do parser é `OKOK-C0-advertising/1`.
 
 ## Conexão GATT futura
 
@@ -432,4 +439,3 @@ Para iniciar GATT em outra variante:
 - notificações e leituras brutas;
 - escritas reais observadas, se existirem;
 - correlação temporal com display e ações do usuário.
-

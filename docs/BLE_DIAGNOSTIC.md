@@ -74,13 +74,23 @@ configuração `app`.
 
 ## Acompanhar os logs
 
-O scanner usa exclusivamente a tag `ControlaPesoBLE` para o diagnóstico:
+O scanner usa a tag `ControlaPesoBLE`. Estados e erros mínimos permanecem
+disponíveis; endereço e payload completos só entram no Logcat em build debug
+depois de ativar **Ajustes > Diagnóstico > Logs BLE detalhados**:
 
 ```bash
 adb logcat -s ControlaPesoBLE:D
 ```
 
-Os Cards da tela permitem expandir e selecionar os payloads hexadecimais.
+Os Cards permitem expandir e copiar payloads. A tela também copia ou
+compartilha o diagnóstico inteiro e mascara os bytes centrais dos endereços
+por padrão. A versão atual exibida é `OKOK-C0-advertising/1`.
+
+O botão **Executar teste de comunicação** executa o mesmo scan amplo e finito
+de 15 segundos. Ele valida somente recepção de advertising: não abre GATT, não
+consulta serviços/características e não escreve na balança. O diagnóstico
+explica essa diferença para evitar que um anúncio recebido seja interpretado
+como conexão permanente.
 
 ## Procedimento de teste
 
@@ -182,6 +192,9 @@ as leituras do mesmo aparelho.
 - A transformação do peso bruto reproduz o número processado pelo OKOK, mas
   unidade, estabilidade e significado das demais flags ainda não foram
   confirmados no aparelho real.
+- O detector atual exige uma janela de oito leituras e limites conservadores;
+  esses limites ainda precisam ser comparados com a indicação de estabilidade
+  do visor.
 - O valor secundário não deve ser chamado de impedância até haver evidência
   adicional.
 - `neverForLocation` pode fazer o Android filtrar certos tipos de beacon, apesar
@@ -200,7 +213,8 @@ Para consolidar esta variante:
 2. correlacionar a transição de `24` para `25` com o início e a estabilização;
 3. descobrir o significado do valor secundário e das flags restantes;
 4. confirmar a unidade configurada na balança;
-5. preencher `weightKg` somente depois dessa confirmação.
+5. confirmar a unidade no aplicativo somente depois dessa comparação; só
+   então uma medição pode ser convertida para kg e persistida.
 
 Uma conexão GATT só deve ser implementada para uma variante que apresente
 evidência de serviços, características ou notificações conectadas. Nesse caso,

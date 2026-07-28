@@ -244,7 +244,9 @@ class BleScanner(
                 okOkAdvertisement = okOkAdvertisement
             )
 
-            logDevice(device)
+            if (BleDiagnosticLogging.isDetailedLoggingEnabled) {
+                logDevice(device)
+            }
             onDeviceFound(device)
             if (
                 okOkAdvertisement != null &&

@@ -2,6 +2,7 @@ package br.com.paivalab.controlapeso.ui.scanner
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +23,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -39,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
 import br.com.paivalab.controlapeso.bluetooth.BleDeviceResult
 import br.com.paivalab.controlapeso.bluetooth.BleHexFormatter
+import br.com.paivalab.controlapeso.bluetooth.BleDiagnosticFormatter
 import br.com.paivalab.controlapeso.bluetooth.BlePermissionStatus
 import br.com.paivalab.controlapeso.bluetooth.BleScanError
 import br.com.paivalab.controlapeso.bluetooth.BleScanPhase
@@ -57,8 +60,16 @@ fun ScannerScreen(
     onStopScan: () -> Unit,
     onClearResults: () -> Unit,
     onDismissError: () -> Unit,
+    onCopyText: (String) -> Unit,
+    onShareText: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var maskAddresses by rememberSaveable { mutableStateOf(true) }
+    val diagnosticText = BleDiagnosticFormatter.format(
+        devices = uiState.devices,
+        history = uiState.advertisementHistory,
+        maskAddresses = maskAddresses
+    )
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -105,6 +116,75 @@ fun ScannerScreen(
                     onClearResults = onClearResults
                 )
             }
+            item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            stringResource(
+                                R.string.diagnostic_parser_version,
+                                BleDiagnosticFormatter.PARSER_VERSION
+                            )
+                        )
+                        Text(stringResource(R.string.diagnostic_advertising_notice))
+                        Text(
+                            stringResource(R.string.diagnostic_gatt_state),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            stringResource(R.string.diagnostic_stability_notice),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                stringResource(R.string.mask_addresses_export),
+                                modifier = Modifier.weight(1f)
+                            )
+                            Switch(
+                                checked = maskAddresses,
+                                onCheckedChange = { maskAddresses = it }
+                            )
+                        }
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = onStartScan,
+                                enabled = uiState.permissionStatus ==
+                                    BlePermissionStatus.GRANTED &&
+                                    uiState.bluetoothSupport ==
+                                    BleSupportStatus.SUPPORTED &&
+                                    uiState.bluetoothPower ==
+                                    BluetoothPowerStatus.ON &&
+                                    !uiState.isScanning
+                            ) {
+                                Text(
+                                    stringResource(
+                                        R.string.diagnostic_communication_test
+                                    )
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = { onCopyText(diagnosticText) },
+                                enabled = uiState.devices.isNotEmpty()
+                            ) {
+                                Text(stringResource(R.string.copy_diagnostic))
+                            }
+                            OutlinedButton(
+                                onClick = { onShareText(diagnosticText) },
+                                enabled = uiState.devices.isNotEmpty()
+                            ) {
+                                Text(stringResource(R.string.export_diagnostic))
+                            }
+                        }
+                    }
+                }
+            }
 
             item {
                 Text(
@@ -134,7 +214,8 @@ fun ScannerScreen(
                     DeviceCard(
                         device = device,
                         advertisementHistory = uiState.advertisementHistory[device.address]
-                            .orEmpty()
+                            .orEmpty(),
+                        onCopyText = onCopyText
                     )
                 }
             }
@@ -313,7 +394,8 @@ private fun ErrorCard(
 @Composable
 private fun DeviceCard(
     device: BleDeviceResult,
-    advertisementHistory: List<BleDeviceResult>
+    advertisementHistory: List<BleDeviceResult>,
+    onCopyText: (String) -> Unit
 ) {
     var expanded by rememberSaveable(device.address) { mutableStateOf(false) }
     val time = DateFormat.getTimeInstance(DateFormat.MEDIUM)
@@ -392,7 +474,8 @@ private fun DeviceCard(
             if (expanded) {
                 TechnicalDeviceData(
                     device = device,
-                    advertisementHistory = advertisementHistory
+                    advertisementHistory = advertisementHistory,
+                    onCopyText = onCopyText
                 )
             }
         }
@@ -402,7 +485,8 @@ private fun DeviceCard(
 @Composable
 private fun TechnicalDeviceData(
     device: BleDeviceResult,
-    advertisementHistory: List<BleDeviceResult>
+    advertisementHistory: List<BleDeviceResult>,
+    onCopyText: (String) -> Unit
 ) {
     val unavailable = stringResource(R.string.not_available)
     val serviceUuids = device.serviceUuids
@@ -436,6 +520,12 @@ private fun TechnicalDeviceData(
 
     SelectionContainer {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedButton(
+                onClick = { onCopyText(rawRecord) },
+                enabled = rawRecord != unavailable
+            ) {
+                Text(stringResource(R.string.copy_raw_payload))
+            }
             TechnicalValue(
                 label = stringResource(R.string.technical_service_uuids),
                 value = serviceUuids
@@ -508,8 +598,9 @@ private fun AdvertisementHistory(history: List<BleDeviceResult>) {
             fontWeight = FontWeight.SemiBold
         )
         Text(
-            text = stringResource(
-                R.string.history_summary,
+            text = pluralStringResource(
+                R.plurals.history_summary,
+                visibleHistory.size,
                 history.size,
                 visibleHistory.size
             ),
