@@ -30,9 +30,7 @@ jobs:
       - uses: android-actions/setup-android@v3
 
       - name: Install Android SDK packages
-        run: |
-          yes | sdkmanager --licenses > /dev/null
-          sdkmanager --install "platform-tools" "platforms;android-36.1" "build-tools;36.0.0"
+        run: ./scripts/install-android-sdk.sh
 
       - uses: gradle/actions/setup-gradle@v4
 
@@ -73,9 +71,7 @@ jobs:
 
       - name: Install Android SDK packages
         shell: bash
-        run: |
-          yes | sdkmanager --licenses > /dev/null
-          sdkmanager --install "platforms;android-36.1" "build-tools;36.0.0"
+        run: ./scripts/install-android-sdk.sh
 
       - uses: gradle/actions/setup-gradle@v4
 
