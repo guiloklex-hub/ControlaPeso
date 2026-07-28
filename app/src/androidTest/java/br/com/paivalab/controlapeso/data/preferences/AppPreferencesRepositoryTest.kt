@@ -11,7 +11,7 @@ import org.junit.Test
 
 class AppPreferencesRepositoryTest {
     private val context
-        get() = InstrumentationRegistry.getInstrumentation().targetContext
+        get() = InstrumentationRegistry.getInstrumentation().context
 
     @Before
     fun clearBefore() = runBlocking {

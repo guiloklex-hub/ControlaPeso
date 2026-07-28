@@ -1,14 +1,18 @@
 package br.com.paivalab.controlapeso.ui.onboarding
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -21,6 +25,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -29,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
 import br.com.paivalab.controlapeso.data.preferences.ThemeMode
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
+import br.com.paivalab.controlapeso.ui.components.BrazilianDateTextField
 
 @Composable
 fun OnboardingScreen(
@@ -46,14 +52,22 @@ fun OnboardingScreen(
     onThemeChange: (ThemeMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+            .background(MaterialTheme.colorScheme.background)
     ) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .widthIn(max = 720.dp)
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
         Text(
             text = stringResource(R.string.app_name),
             style = MaterialTheme.typography.headlineMedium,
@@ -111,32 +125,37 @@ fun OnboardingScreen(
         }
 
         Spacer(Modifier.weight(1f, fill = false))
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            if (state.step > 0) {
-                OutlinedButton(onClick = onPrevious, enabled = !state.isSaving) {
-                    Text(stringResource(R.string.back))
-                }
-            } else {
-                TextButton(onClick = onSkip, enabled = !state.isSaving) {
-                    Text(stringResource(R.string.skip_onboarding))
-                }
-            }
-            Button(
-                onClick = if (state.step == state.totalSteps - 1) onFinish else onNext,
-                enabled = !state.isSaving
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    stringResource(
-                        if (state.step == state.totalSteps - 1) {
-                            R.string.finish
-                        } else {
-                            R.string.next
-                        }
+                if (state.step > 0) {
+                    OutlinedButton(onClick = onPrevious, enabled = !state.isSaving) {
+                        Text(stringResource(R.string.back))
+                    }
+                } else {
+                    TextButton(onClick = onSkip, enabled = !state.isSaving) {
+                        Text(stringResource(R.string.skip_onboarding))
+                    }
+                }
+                Button(
+                    onClick = if (state.step == state.totalSteps - 1) {
+                        onFinish
+                    } else {
+                        onNext
+                    },
+                    enabled = !state.isSaving
+                ) {
+                    Text(
+                        stringResource(
+                            if (state.step == state.totalSteps - 1) {
+                                R.string.finish
+                            } else {
+                                R.string.next
+                            }
+                        )
                     )
-                )
+                }
             }
         }
     }
@@ -205,12 +224,10 @@ private fun ProfileStep(
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
-        OutlinedTextField(
+        BrazilianDateTextField(
             value = state.birthDateText,
             onValueChange = onBirthDateChange,
-            label = { Text(stringResource(R.string.birth_date_optional)) },
-            supportingText = { Text(stringResource(R.string.iso_date_hint)) },
-            singleLine = true,
+            label = stringResource(R.string.birth_date_optional),
             modifier = Modifier.fillMaxWidth()
         )
         UnitSelector(state.unit, onUnitChange)

@@ -4,31 +4,35 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
 import br.com.paivalab.controlapeso.domain.model.Profile
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
+import br.com.paivalab.controlapeso.ui.components.BrazilianDateTextField
+import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
+import br.com.paivalab.controlapeso.ui.designsystem.components.EmptyState
+import br.com.paivalab.controlapeso.ui.designsystem.components.ProfileAvatar
+import br.com.paivalab.controlapeso.ui.designsystem.components.ResponsiveScreenList
+import br.com.paivalab.controlapeso.ui.designsystem.components.StatusPill
 
 @Composable
 fun ProfilesScreen(
@@ -49,16 +53,11 @@ fun ProfilesScreen(
     onExportBeforeDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    ResponsiveScreenList(modifier = modifier) {
         item {
             Text(
                 stringResource(R.string.profiles_title),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.headlineLarge
             )
         }
         item {
@@ -67,7 +66,14 @@ fun ProfilesScreen(
             }
         }
         if (state.profiles.isEmpty()) {
-            item { Text(stringResource(R.string.no_profiles)) }
+            item {
+                EmptyState(
+                    title = stringResource(R.string.profiles_empty_title),
+                    body = stringResource(R.string.no_profiles),
+                    actionLabel = stringResource(R.string.create_profile),
+                    onAction = onCreate
+                )
+            }
         }
         items(state.profiles, key = Profile::id) { profile ->
             ProfileCard(profile, onEdit, onSetActive, onDelete)
@@ -120,43 +126,67 @@ private fun ProfileCard(
     onSetActive: (Profile) -> Unit,
     onDelete: (Profile) -> Unit
 ) {
-    Card(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onEdit(profile) }
+            .clickable { onEdit(profile) },
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Row(
+            modifier = Modifier.padding(ControlaPesoDesignSystem.spacing.md),
+            horizontalArrangement = Arrangement.spacedBy(
+                ControlaPesoDesignSystem.spacing.md
+            ),
+            verticalAlignment = Alignment.Top
         ) {
-            Text(profile.name, style = MaterialTheme.typography.titleLarge)
-            Text(
-                if (profile.isActive) {
-                    stringResource(R.string.active_profile)
-                } else {
-                    stringResource(R.string.inactive_profile)
-                },
-                color = if (profile.isActive) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
-            )
-            Text(stringResource(R.string.profile_unit, profile.preferredWeightUnit.symbol))
-            profile.heightCm?.let {
-                Text(stringResource(R.string.profile_height, it))
-            }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (!profile.isActive) {
-                    OutlinedButton(onClick = { onSetActive(profile) }) {
-                        Text(stringResource(R.string.make_active))
+            ProfileAvatar(name = profile.name)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(
+                    ControlaPesoDesignSystem.spacing.xs
+                )
+            ) {
+                Text(profile.name, style = MaterialTheme.typography.titleLarge)
+                StatusPill(
+                    text = stringResource(
+                        if (profile.isActive) {
+                            R.string.active_profile
+                        } else {
+                            R.string.inactive_profile
+                        }
+                    ),
+                    color = if (profile.isActive) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.outline
                     }
+                )
+                Text(
+                    stringResource(
+                        R.string.profile_unit,
+                        profile.preferredWeightUnit.symbol
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                profile.heightCm?.let {
+                    Text(
+                        stringResource(R.string.profile_height, it),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-                TextButton(onClick = { onEdit(profile) }) {
-                    Text(stringResource(R.string.edit))
-                }
-                TextButton(onClick = { onDelete(profile) }) {
-                    Text(stringResource(R.string.delete))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (!profile.isActive) {
+                        OutlinedButton(onClick = { onSetActive(profile) }) {
+                            Text(stringResource(R.string.make_active))
+                        }
+                    }
+                    TextButton(onClick = { onEdit(profile) }) {
+                        Text(stringResource(R.string.edit))
+                    }
+                    TextButton(onClick = { onDelete(profile) }) {
+                        Text(stringResource(R.string.delete))
+                    }
                 }
             }
         }
@@ -216,12 +246,10 @@ private fun ProfileDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true
                 )
-                OutlinedTextField(
+                BrazilianDateTextField(
                     value = form.birthDateText,
                     onValueChange = onBirthDateChange,
-                    label = { Text(stringResource(R.string.birth_date_optional)) },
-                    supportingText = { Text(stringResource(R.string.iso_date_hint)) },
-                    singleLine = true
+                    label = stringResource(R.string.birth_date_optional)
                 )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     WeightUnit.entries.forEach { unit ->

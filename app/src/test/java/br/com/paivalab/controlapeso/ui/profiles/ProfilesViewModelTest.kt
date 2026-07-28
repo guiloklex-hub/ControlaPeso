@@ -82,7 +82,7 @@ class ProfilesViewModelTest {
 
         viewModel.startCreate()
         viewModel.setName("Pessoa")
-        viewModel.setBirthDate("2026-07-28")
+        viewModel.setBirthDate("28-07-2026")
         viewModel.save()
         advanceUntilIdle()
 

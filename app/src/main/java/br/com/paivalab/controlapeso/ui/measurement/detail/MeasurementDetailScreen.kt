@@ -3,14 +3,10 @@ package br.com.paivalab.controlapeso.ui.measurement.detail
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -18,6 +14,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -25,11 +22,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
 import br.com.paivalab.controlapeso.core.time.MeasurementTimeFormatter
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
+import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
+import br.com.paivalab.controlapeso.ui.designsystem.components.EmptyState
+import br.com.paivalab.controlapeso.ui.designsystem.components.HeroMetricCard
+import br.com.paivalab.controlapeso.ui.designsystem.components.ResponsiveScreenList
 import br.com.paivalab.controlapeso.ui.history.sourceText
 import java.time.format.FormatStyle
 
@@ -66,40 +66,39 @@ fun MeasurementDetailScreen(
     ) { innerPadding ->
         val measurement = state.measurement
         val unit = state.profile?.preferredWeightUnit ?: WeightUnit.KILOGRAM
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ResponsiveScreenList(
+            modifier = Modifier.padding(innerPadding),
+            maxContentWidth = 760.dp
         ) {
             item {
                 Text(
                     stringResource(R.string.measurement_detail_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.headlineLarge
                 )
             }
             if (measurement == null) {
-                item { Text(stringResource(R.string.measurement_not_found)) }
+                item {
+                    EmptyState(
+                        title = stringResource(R.string.measurement_not_found_title),
+                        body = stringResource(R.string.measurement_not_found)
+                    )
+                }
             } else {
                 item {
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                    HeroMetricCard(
+                        label = stringResource(R.string.measurement_weight_label),
+                        value = unit.formatFromKilograms(measurement.weightKg),
+                        supportingText = MeasurementTimeFormatter.dateTime(
+                            measurement,
+                            dateStyle = FormatStyle.FULL
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Column(
-                            modifier = Modifier.padding(18.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                            verticalArrangement = Arrangement.spacedBy(
+                                ControlaPesoDesignSystem.spacing.xs
+                            )
                         ) {
-                            Text(
-                                unit.formatFromKilograms(measurement.weightKg),
-                                style = MaterialTheme.typography.displaySmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                MeasurementTimeFormatter.dateTime(
-                                    measurement,
-                                    dateStyle = FormatStyle.FULL
-                                )
-                            )
                             Text(
                                 stringResource(
                                     R.string.detail_profile,
@@ -223,10 +222,16 @@ private fun AdditionalMetricsCard(
         }
     )
     if (values.isEmpty()) return
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier.padding(ControlaPesoDesignSystem.spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(
+                ControlaPesoDesignSystem.spacing.xs
+            )
         ) {
             Text(
                 stringResource(R.string.additional_metrics),

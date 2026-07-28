@@ -5,12 +5,12 @@
 | Fase | Estado | Evidência ou pendência |
 | --- | --- | --- |
 | 0 — Baseline e governança | Concluída em 27/07/2026 | Baseline registrado neste documento; build limpo, testes e lint passaram |
-| 1 — Contrato BLE e balança física | Implementação concluída; validação física pendente | Scanner/parser preservados; unidade e estabilidade precisam de nova sessão com telefone e balança |
+| 1 — Contrato BLE e balança física | Parcialmente validada em 28/07/2026 | `Yoda1` detectada, scan mudou para amostragem e UI mostrou peso estável; unidade/visor ainda pendentes |
 | 2 — Fundação e dependências | Concluída em 27/07/2026 | Container, Clock, KSP, Room, DataStore, Navigation, WorkManager e Health Connect compatíveis |
 | 3 — Persistência Room e repositórios | Concluída em 27/07/2026 | Schema v1 exportado, FKs, índices, transações e testes Room |
 | 4 — Preferências, navegação, tema e onboarding | Concluída em 27/07/2026 | Onboarding, cinco destinos principais, temas e navegação adaptável |
 | 5 — Perfis e medições manuais | Concluída em 27/07/2026 | CRUD, perfil ativo, validação, edição, exclusão e duplicidade |
-| 6 — Medição BLE persistida | Implementação concluída; validação física pendente | Detector por janela, unidade confirmada pelo usuário, salvamento único e payload bruto |
+| 6 — Medição BLE persistida | Implementação concluída; validação física parcial | Detector mostrou estado estável na `Yoda1`; persistência de um único registro ainda precisa ser acionada e comparada ao visor |
 | 7 — Dashboard, histórico e detalhes | Concluída em 27/07/2026 | Gráfico acessível, estatísticas, filtros, agrupamento, edição e desfazer |
 | 8 — Design, acessibilidade e adaptação | Implementação concluída; validação física pendente | Compact/medium/expanded, fonte ampliada, semântica e smoke tests compilados |
 | 9 — Metas e IMC | Concluída em 27/07/2026 | Metas transacionais, progresso neutro e IMC derivado com aviso |
@@ -18,7 +18,7 @@
 | 11 — PDF, compartilhamento e limpeza | Concluída em 27/07/2026 | PDF paginado, resumo, FileProvider, SAF e limpeza via WorkManager |
 | 12 — Health Connect e lembretes | Implementação concluída; validação física pendente | Escrita idempotente opt-in e lembretes aproximados sem alarmes exatos |
 | 13 — Dispositivos, diagnóstico, privacidade e demo | Concluída em 27/07/2026 | Balanças conhecidas, exportação técnica mascarada, exclusão total e demo somente debug |
-| 14 — Qualidade e documentação final | Implementação local concluída; validação física pendente | Build limpo, 64 testes, lint, debug/release e APK instrumentado passaram; telefone não apareceu no ADB |
+| 14 — Qualidade e documentação final | Automação local concluída; repetição física pendente | `test`, lint, debug/release e APK instrumentado passaram; 16/16 instrumentados passaram no SM-S908E, mas a repetição exige telefone desbloqueado |
 
 ### Checkpoint final local — 27/07/2026
 
@@ -38,6 +38,29 @@ adb devices -l
 - `git diff --check`: sucesso.
 - `connectedAndroidTest` e instalação não foram executados porque nenhum
   dispositivo ou AVD apareceu no ADB no checkpoint final.
+
+### Checkpoint no telefone — 28/07/2026
+
+```bash
+./gradlew test lint assembleDebug assembleRelease assembleInstrumentedAndroidTest --continue
+./gradlew connectedAndroidTest
+adb shell am start -W -n br.com.paivalab.controlapeso/.MainActivity
+```
+
+- Build local: sucesso em 161 tarefas; testes JVM, lint, debug, release e APK
+  instrumentado gerados sem falha.
+- Testes instrumentados: 16/16 concluídos, sem falhas ou ignorados, no Samsung
+  SM-S908E/Android 16/API 36.
+- A variante de teste passou a usar package isolado
+  `br.com.paivalab.controlapeso.instrumented`; o APK debug normal continuou
+  instalado e abriu após a execução.
+- BLE: o scan sem filtros iniciou em `LOW_POWER`, recebeu anúncio OKOK, mudou
+  para `LOW_LATENCY` e a UI mostrou **Peso estabilizado** para a `Yoda1`.
+- Não houve comparação com o visor nem toque em salvar. Unidade física e
+  persistência de uma única medição continuam pendentes.
+- Uma repetição posterior dos smoke tests Compose falhou porque
+  `isKeyguardShowing=true`; repetir somente com o telefone desbloqueado e a
+  tela acesa.
 
 ## 1. Baseline e invariantes
 

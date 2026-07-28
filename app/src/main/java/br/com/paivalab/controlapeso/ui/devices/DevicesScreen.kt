@@ -2,28 +2,29 @@ package br.com.paivalab.controlapeso.ui.devices
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
 import br.com.paivalab.controlapeso.domain.model.ScaleDevice
+import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
+import br.com.paivalab.controlapeso.ui.designsystem.components.EmptyState
+import br.com.paivalab.controlapeso.ui.designsystem.components.ErrorState
+import br.com.paivalab.controlapeso.ui.designsystem.components.LoadingState
+import br.com.paivalab.controlapeso.ui.designsystem.components.ResponsiveScreenList
+import br.com.paivalab.controlapeso.ui.designsystem.components.StatusPill
 import java.text.DateFormat
 import java.time.Instant
 import java.util.Date
@@ -39,32 +40,37 @@ fun DevicesScreen(
     onDiagnostic: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    ResponsiveScreenList(modifier = modifier) {
         item {
             Text(
                 stringResource(R.string.devices_title),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.headlineLarge
             )
         }
         item {
-            Text(stringResource(R.string.devices_no_background_connection))
+            Text(
+                stringResource(R.string.devices_no_background_connection),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         if (state.isLoading) {
-            item { CircularProgressIndicator() }
+            item { LoadingState(stringResource(R.string.loading_data)) }
         } else if (state.hasError) {
             item {
-                Text(
-                    stringResource(R.string.data_load_error),
-                    color = MaterialTheme.colorScheme.error
+                ErrorState(
+                    title = stringResource(R.string.devices_load_error_title),
+                    body = stringResource(R.string.data_load_error)
                 )
             }
         } else if (state.devices.isEmpty()) {
-            item { Text(stringResource(R.string.devices_empty)) }
+            item {
+                EmptyState(
+                    title = stringResource(R.string.devices_empty_title),
+                    body = stringResource(R.string.devices_empty),
+                    actionLabel = stringResource(R.string.measure_with_scale),
+                    onAction = onMeasure
+                )
+            }
         }
         items(state.devices, key = { it.device.id }) { item ->
             DeviceCard(
@@ -115,22 +121,32 @@ private fun DeviceCard(
     onMeasure: () -> Unit
 ) {
     val device = item.device
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(ControlaPesoDesignSystem.spacing.md),
+            verticalArrangement = Arrangement.spacedBy(
+                ControlaPesoDesignSystem.spacing.xs
+            )
         ) {
             Text(
                 device.displayName ?: stringResource(R.string.unnamed_device),
                 style = MaterialTheme.typography.titleLarge
             )
-            Text(
-                if (device.isPreferred) {
+            StatusPill(
+                text = if (device.isPreferred) {
                     stringResource(R.string.preferred_scale)
                 } else {
                     stringResource(R.string.known_scale)
                 },
-                fontWeight = FontWeight.SemiBold
+                color = if (device.isPreferred) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.outline
+                }
             )
             Text(
                 stringResource(

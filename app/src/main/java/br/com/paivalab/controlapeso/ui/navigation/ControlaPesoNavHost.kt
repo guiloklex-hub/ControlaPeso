@@ -16,6 +16,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,8 +26,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -71,6 +74,13 @@ import br.com.paivalab.controlapeso.ui.reports.ReportsScreen
 import br.com.paivalab.controlapeso.ui.reports.ReportsViewModel
 import br.com.paivalab.controlapeso.ui.settings.SettingsScreen
 import br.com.paivalab.controlapeso.ui.settings.SettingsViewModel
+import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
+import br.com.paivalab.controlapeso.ui.designsystem.components.AdaptiveContentPane
+import br.com.paivalab.controlapeso.ui.designsystem.components.AppBackground
+import br.com.paivalab.controlapeso.ui.designsystem.components.PrimaryActionCard
+import br.com.paivalab.controlapeso.ui.designsystem.components.SecondaryActionCard
+import br.com.paivalab.controlapeso.ui.designsystem.tokens.ControlaPesoWindowSize
+import br.com.paivalab.controlapeso.ui.designsystem.tokens.controlaPesoWindowSize
 import java.time.format.FormatStyle
 
 @Composable
@@ -88,6 +98,16 @@ fun ControlaPesoNavHost(
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    val usesCompactNavigationLabels = LocalDensity.current.fontScale >= 1.5f
+    val navigateToPrimaryDestination: (AppDestination) -> Unit = { destination ->
+        navController.navigate(destination.route) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = false
+            }
+            launchSingleTop = true
+            restoreState = false
+        }
+    }
     LaunchedEffect(requestedDestination) {
         if (requestedDestination in internalNotificationDestinations) {
             navController.navigate(requireNotNull(requestedDestination)) {
@@ -98,10 +118,11 @@ fun ControlaPesoNavHost(
     }
 
     BoxWithConstraints(modifier.fillMaxSize()) {
-        val expanded = maxWidth >= 600.dp
+        val windowSize = controlaPesoWindowSize(maxWidth)
+        val usesNavigationRail = windowSize != ControlaPesoWindowSize.COMPACT
         Scaffold(
             bottomBar = {
-                if (!expanded) {
+                if (!usesNavigationRail) {
                     NavigationBar {
                         primaryDestinations.forEach { destination ->
                             NavigationBarItem(
@@ -109,15 +130,7 @@ fun ControlaPesoNavHost(
                                 modifier = Modifier.testTag(
                                     "primary_navigation_${destination.route}"
                                 ),
-                                onClick = {
-                                    navController.navigate(destination.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
+                                onClick = { navigateToPrimaryDestination(destination) },
                                 icon = {
                                     destination.icon?.let {
                                         Icon(
@@ -127,7 +140,12 @@ fun ControlaPesoNavHost(
                                         )
                                     }
                                 },
-                                label = { Text(stringResource(destination.labelRes)) }
+                                label = {
+                                    NavigationLabel(
+                                        destination = destination,
+                                        compact = usesCompactNavigationLabels
+                                    )
+                                }
                             )
                         }
                     }
@@ -139,7 +157,7 @@ fun ControlaPesoNavHost(
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                if (expanded) {
+                if (usesNavigationRail) {
                     NavigationRail {
                         primaryDestinations.forEach { destination ->
                             NavigationRailItem(
@@ -147,15 +165,7 @@ fun ControlaPesoNavHost(
                                 modifier = Modifier.testTag(
                                     "primary_navigation_${destination.route}"
                                 ),
-                                onClick = {
-                                    navController.navigate(destination.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
+                                onClick = { navigateToPrimaryDestination(destination) },
                                 icon = {
                                     destination.icon?.let {
                                         Icon(
@@ -165,7 +175,12 @@ fun ControlaPesoNavHost(
                                         )
                                     }
                                 },
-                                label = { Text(stringResource(destination.labelRes)) }
+                                label = {
+                                    NavigationLabel(
+                                        destination = destination,
+                                        compact = usesCompactNavigationLabels
+                                    )
+                                }
                             )
                         }
                     }
@@ -700,18 +715,59 @@ private fun MeasureMenu(
     onManual: () -> Unit,
     onDiagnostic: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(
-            stringResource(R.string.measure_title),
-            style = MaterialTheme.typography.headlineMedium
-        )
-        Button(onClick = onLive) { Text(stringResource(R.string.measure_with_scale)) }
-        Button(onClick = onManual) { Text(stringResource(R.string.add_manual_weight)) }
-        Button(onClick = onDiagnostic) { Text(stringResource(R.string.open_diagnostic)) }
+    AppBackground {
+        AdaptiveContentPane {
+                _: ControlaPesoWindowSize,
+                _: androidx.compose.foundation.layout.PaddingValues ->
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(
+                    ControlaPesoDesignSystem.spacing.md
+                )
+            ) {
+                Text(
+                    stringResource(R.string.measure_title),
+                    style = MaterialTheme.typography.headlineLarge
+                )
+                Text(
+                    stringResource(R.string.measure_intro),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                PrimaryActionCard(
+                    title = stringResource(R.string.measure_with_scale),
+                    body = stringResource(R.string.measure_with_scale_body),
+                    onClick = onLive
+                )
+                SecondaryActionCard(
+                    title = stringResource(R.string.add_manual_weight),
+                    body = stringResource(R.string.add_manual_weight_body),
+                    onClick = onManual
+                )
+                OutlinedButton(onClick = onDiagnostic) {
+                    Text(stringResource(R.string.open_diagnostic))
+                }
+            }
+        }
     }
+}
+
+@Composable
+private fun NavigationLabel(
+    destination: AppDestination,
+    compact: Boolean
+) {
+    Text(
+        text = stringResource(
+            if (compact) destination.compactLabelRes else destination.labelRes
+        ),
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Clip,
+        style = if (compact) {
+            MaterialTheme.typography.labelSmall
+        } else {
+            MaterialTheme.typography.labelMedium
+        }
+    )
 }

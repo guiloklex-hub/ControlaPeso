@@ -1,30 +1,32 @@
 package br.com.paivalab.controlapeso.ui.privacy
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
+import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
+import br.com.paivalab.controlapeso.ui.designsystem.components.ErrorState
+import br.com.paivalab.controlapeso.ui.designsystem.components.ResponsiveScreenList
 
 @Composable
 fun PrivacyScreen(
@@ -47,18 +49,12 @@ fun PrivacyScreen(
             onConsumeTemporaryNotice()
         }
     }
-    Column(modifier.fillMaxSize()) {
-        SnackbarHost(snackbar)
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+    Box(modifier.fillMaxSize()) {
+        ResponsiveScreenList {
             item {
                 Text(
                     stringResource(R.string.privacy_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.headlineLarge
                 )
             }
             item {
@@ -103,13 +99,17 @@ fun PrivacyScreen(
             }
             if (state.error) {
                 item {
-                    Text(
-                        stringResource(R.string.delete_all_error),
-                        color = MaterialTheme.colorScheme.error
+                    ErrorState(
+                        title = stringResource(R.string.privacy_delete_error_title),
+                        body = stringResource(R.string.delete_all_error)
                     )
                 }
             }
         }
+        SnackbarHost(
+            snackbar,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 
     if (state.showFirstConfirmation) {
@@ -169,10 +169,16 @@ fun PrivacyScreen(
 
 @Composable
 private fun PrivacyCard(title: String, body: String) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier.padding(ControlaPesoDesignSystem.spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(
+                ControlaPesoDesignSystem.spacing.xs
+            )
         ) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(body)

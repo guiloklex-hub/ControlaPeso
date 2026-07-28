@@ -1,5 +1,9 @@
 # Documentação do Controla Peso
 
+- [Projeto open source e governança](OPEN_SOURCE.md)
+- [Distribuição Android](DISTRIBUTION.md)
+- [Publicação de releases](RELEASING.md)
+- [Notas do release v1.0.0](releases/v1.0.0.md)
 - [Baseline](BASELINE.md)
 - [Arquitetura](ARCHITECTURE.md)
 - [Protocolo BLE resumido](BLE_PROTOCOL.md)

@@ -1,5 +1,6 @@
 package br.com.paivalab.controlapeso.ui.history
 
+import br.com.paivalab.controlapeso.core.time.BrazilianDateFormatter
 import java.time.DateTimeException
 import java.time.Instant
 import java.time.LocalDate
@@ -20,8 +21,8 @@ object HistoryDateRangeCalculator {
             HistoryRange.YEAR_1 -> today.minusYears(1) to today.plusDays(1)
             HistoryRange.CUSTOM -> {
                 try {
-                    val start = LocalDate.parse(filters.customStartText)
-                    val end = LocalDate.parse(filters.customEndText)
+                    val start = BrazilianDateFormatter.parse(filters.customStartText)
+                    val end = BrazilianDateFormatter.parse(filters.customEndText)
                     if (end < start) return null
                     start to end.plusDays(1)
                 } catch (_: DateTimeException) {

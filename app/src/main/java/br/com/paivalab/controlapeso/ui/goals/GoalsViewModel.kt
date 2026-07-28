@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import br.com.paivalab.controlapeso.app.AppContainer
 import br.com.paivalab.controlapeso.core.id.IdGenerator
 import br.com.paivalab.controlapeso.core.time.AppClock
+import br.com.paivalab.controlapeso.core.time.BrazilianDateFormatter
 import br.com.paivalab.controlapeso.domain.model.GoalStatus
 import br.com.paivalab.controlapeso.domain.model.Profile
 import br.com.paivalab.controlapeso.domain.model.WeightGoal
@@ -14,7 +15,6 @@ import br.com.paivalab.controlapeso.domain.repository.GoalRepository
 import br.com.paivalab.controlapeso.domain.usecase.goals.CalculateGoalProgress
 import br.com.paivalab.controlapeso.domain.usecase.goals.GoalProgress
 import java.time.DateTimeException
-import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -109,7 +109,9 @@ class GoalsViewModel(
                 editingId = goal.id,
                 startWeightText = goal.startWeightKg.toString(),
                 targetWeightText = goal.targetWeightKg.toString(),
-                targetDateText = goal.targetDate?.toString().orEmpty()
+                targetDateText = goal.targetDate
+                    ?.let(BrazilianDateFormatter::inputDigits)
+                    .orEmpty()
             ),
             error = null
         )
@@ -118,7 +120,9 @@ class GoalsViewModel(
     fun dismissForm() = local.update { it.copy(form = null, error = null) }
     fun setStartWeight(value: String) = updateForm { copy(startWeightText = value) }
     fun setTargetWeight(value: String) = updateForm { copy(targetWeightText = value) }
-    fun setTargetDate(value: String) = updateForm { copy(targetDateText = value) }
+    fun setTargetDate(value: String) = updateForm {
+        copy(targetDateText = BrazilianDateFormatter.inputDigits(value))
+    }
 
     fun save() {
         val state = uiState.value
@@ -128,7 +132,9 @@ class GoalsViewModel(
         val start = form.startWeightText.localizedDouble()?.let(unit::toKilograms)
         val target = form.targetWeightText.localizedDouble()?.let(unit::toKilograms)
         val targetDate = try {
-            form.targetDateText.trim().takeIf(String::isNotEmpty)?.let(LocalDate::parse)
+            form.targetDateText.trim()
+                .takeIf(String::isNotEmpty)
+                ?.let(BrazilianDateFormatter::parse)
         } catch (_: DateTimeException) {
             local.update { it.copy(error = GoalFormError.INVALID_DATE) }
             return

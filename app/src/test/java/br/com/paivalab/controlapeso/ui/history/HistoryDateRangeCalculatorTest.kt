@@ -36,8 +36,8 @@ class HistoryDateRangeCalculatorTest {
             HistoryDateRangeCalculator.bounds(
                 HistoryFilters(
                     range = HistoryRange.CUSTOM,
-                    customStartText = "2026-07-30",
-                    customEndText = "2026-07-20"
+                    customStartText = "30-07-2026",
+                    customEndText = "20-07-2026"
                 ),
                 today,
                 zone
@@ -50,6 +50,24 @@ class HistoryDateRangeCalculatorTest {
                 zone
             )
         )
+    }
+
+    @Test
+    fun `custom period accepts brazilian dates`() {
+        val bounds = requireNotNull(
+            HistoryDateRangeCalculator.bounds(
+                HistoryFilters(
+                    range = HistoryRange.CUSTOM,
+                    customStartText = "20-07-2026",
+                    customEndText = "27-07-2026"
+                ),
+                today,
+                zone
+            )
+        )
+
+        assertEquals(LocalDate.of(2026, 7, 20), bounds.first.atZone(zone).toLocalDate())
+        assertEquals(LocalDate.of(2026, 7, 28), bounds.second.atZone(zone).toLocalDate())
     }
 
     @Test

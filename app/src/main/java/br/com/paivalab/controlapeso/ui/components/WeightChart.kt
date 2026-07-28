@@ -29,6 +29,7 @@ import br.com.paivalab.controlapeso.core.time.MeasurementTimeFormatter
 import br.com.paivalab.controlapeso.domain.model.WeightMeasurement
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.domain.usecase.statistics.MovingAveragePoint
+import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
 
 @Composable
 fun WeightChart(
@@ -63,9 +64,9 @@ fun WeightChart(
         axisMinimum,
         axisMaximum
     )
-    val lineColor = MaterialTheme.colorScheme.primary
-    val movingColor = MaterialTheme.colorScheme.tertiary
-    val gridColor = MaterialTheme.colorScheme.outlineVariant
+    val lineColor = ControlaPesoDesignSystem.colors.chartPrimary
+    val movingColor = ControlaPesoDesignSystem.colors.chartAverage
+    val gridColor = ControlaPesoDesignSystem.colors.chartGrid
     val selectedColor = MaterialTheme.colorScheme.secondary
     val movingById = remember(movingAverage) {
         movingAverage.associate { it.measurement.id to it.averageWeightKg }

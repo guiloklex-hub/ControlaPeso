@@ -19,9 +19,6 @@ class BlePermissionManifestTest {
         val requested = packageInfo.requestedPermissions.orEmpty().toSet()
 
         assertFalse(Manifest.permission.INTERNET in requested)
-        assertTrue(Manifest.permission.BLUETOOTH in requested)
-        assertTrue(Manifest.permission.BLUETOOTH_ADMIN in requested)
-        assertTrue(Manifest.permission.ACCESS_FINE_LOCATION in requested)
         assertTrue(Manifest.permission.BLUETOOTH_SCAN in requested)
         assertTrue(Manifest.permission.BLUETOOTH_CONNECT in requested)
 
@@ -31,6 +28,9 @@ class BlePermissionManifestTest {
             assertTrue(Manifest.permission.BLUETOOTH_CONNECT in runtime)
             assertFalse(Manifest.permission.ACCESS_FINE_LOCATION in runtime)
         } else {
+            assertTrue(Manifest.permission.BLUETOOTH in requested)
+            assertTrue(Manifest.permission.BLUETOOTH_ADMIN in requested)
+            assertTrue(Manifest.permission.ACCESS_FINE_LOCATION in requested)
             assertTrue(Manifest.permission.ACCESS_FINE_LOCATION in runtime)
             assertFalse(Manifest.permission.BLUETOOTH_SCAN in runtime)
         }

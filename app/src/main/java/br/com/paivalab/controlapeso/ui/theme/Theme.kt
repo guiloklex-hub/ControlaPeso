@@ -17,6 +17,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.core.view.WindowCompat
 import br.com.paivalab.controlapeso.data.preferences.ThemeMode
 import br.com.paivalab.controlapeso.data.preferences.VisualEffects
+import br.com.paivalab.controlapeso.ui.designsystem.ProvideControlaPesoDesignSystem
+import br.com.paivalab.controlapeso.ui.designsystem.tokens.ControlaPesoShapes
 
 val LocalVisualEffects = staticCompositionLocalOf { VisualEffects.FULL }
 
@@ -44,23 +46,47 @@ private val LightColorScheme = lightColorScheme(
 private val HighContrastDarkColorScheme = darkColorScheme(
     primary = Color(0xFF9EFFF6),
     onPrimary = Color.Black,
+    primaryContainer = Color(0xFF00504C),
+    onPrimaryContainer = Color.White,
     secondary = Color(0xFFB9E8FF),
+    onSecondary = Color.Black,
+    secondaryContainer = Color(0xFF174F67),
+    onSecondaryContainer = Color.White,
+    tertiary = Color(0xFFFFDDA8),
+    onTertiary = Color.Black,
+    tertiaryContainer = Color(0xFF5C4219),
+    onTertiaryContainer = Color.White,
     background = Color.Black,
     onBackground = Color.White,
     surface = Color(0xFF0B1716),
     onSurface = Color.White,
-    outline = Color(0xFFD7E5E3)
+    surfaceVariant = Color(0xFF152422),
+    onSurfaceVariant = Color.White,
+    outline = Color(0xFFD7E5E3),
+    outlineVariant = Color(0xFF82918E)
 )
 
 private val HighContrastLightColorScheme = lightColorScheme(
     primary = Color(0xFF004E49),
     onPrimary = Color.White,
+    primaryContainer = Color(0xFFB6FFF8),
+    onPrimaryContainer = Color.Black,
     secondary = Color(0xFF174F67),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFD3F0FF),
+    onSecondaryContainer = Color.Black,
+    tertiary = Color(0xFF5F4319),
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFFFDDA8),
+    onTertiaryContainer = Color.Black,
     background = Color.White,
     onBackground = Color.Black,
     surface = Color.White,
     onSurface = Color.Black,
-    outline = Color(0xFF263331)
+    surfaceVariant = Color(0xFFE9F3F1),
+    onSurfaceVariant = Color.Black,
+    outline = Color(0xFF263331),
+    outlineVariant = Color(0xFF667572)
 )
 
 @Composable
@@ -102,7 +128,9 @@ fun ControlaPesoTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography = Typography,
-            content = content
-        )
+            shapes = ControlaPesoShapes
+        ) {
+            ProvideControlaPesoDesignSystem(content)
+        }
     }
 }

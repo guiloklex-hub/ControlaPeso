@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title description">
+  <title id="title">Controla Peso</title>
+  <desc id="description">Aplicativo Android privado para acompanhamento de peso.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#072D2A"/>
+      <stop offset="52%" stop-color="#0A4A43"/>
+      <stop offset="100%" stop-color="#14645C"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" x2="1">
+      <stop offset="0%" stop-color="#B8F3DF"/>
+      <stop offset="100%" stop-color="#E5FFF2"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#001B18" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="640" fill="url(#background)"/>
+  <circle cx="1114" cy="122" r="270" fill="#43A893" opacity=".18"/>
+  <circle cx="1150" cy="586" r="330" fill="#B8F3DF" opacity=".08"/>
+  <path d="M0 523C220 460 356 562 581 498C811 433 924 326 1280 388V640H0Z" fill="#0E3B37" opacity=".76"/>
+  <g transform="translate(120 142)" filter="url(#shadow)">
+    <rect width="188" height="232" rx="48" fill="#E9FFF5"/>
+    <rect x="22" y="23" width="144" height="186" rx="32" fill="#0B4C45"/>
+    <text x="94" y="117" text-anchor="middle" fill="#E9FFF5" font-family="Arial, sans-serif" font-size="47" font-weight="700">72.4</text>
+    <text x="94" y="153" text-anchor="middle" fill="#B8F3DF" font-family="Arial, sans-serif" font-size="22" font-weight="700">kg</text>
+    <path d="M55 181C75 163 105 163 127 142" fill="none" stroke="#B8F3DF" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="55" cy="181" r="8" fill="#B8F3DF"/>
+    <circle cx="127" cy="142" r="8" fill="#B8F3DF"/>
+  </g>
+  <text x="370" y="266" fill="#F5FFF9" font-family="Arial, sans-serif" font-size="76" font-weight="700">Controla Peso</text>
+  <text x="375" y="334" fill="url(#accent)" font-family="Arial, sans-serif" font-size="31" font-weight="400">Seu peso. Seus dados. No seu dispositivo.</text>
+  <rect x="376" y="385" width="352" height="54" rx="27" fill="#B8F3DF" opacity=".16"/>
+  <text x="402" y="421" fill="#E9FFF5" font-family="Arial, sans-serif" font-size="23" font-weight="700">ANDROID • OFFLINE-FIRST • PRIVADO</text>
+</svg>

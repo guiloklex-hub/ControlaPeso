@@ -29,6 +29,7 @@
         <item quantity="other">%1$d dispositivos encontrados</item>
     </plurals>
     <string name="no_devices">Nenhum dispositivo detectado. Inicie a busca e ative a balança.</string>
+    <string name="no_devices_title">Aguardando anúncios Bluetooth</string>
     <string name="unnamed_device">Dispositivo sem nome</string>
     <string name="device_address">Endereço: %1$s</string>
     <string name="device_rssi">RSSI: %1$d dBm</string>
@@ -70,29 +71,45 @@
     <string name="error_unexpected">Falha inesperada ao %1$s.</string>
 
     <string name="nav_dashboard">Início</string>
+    <string name="nav_dashboard_compact">Início</string>
     <string name="nav_history">Histórico</string>
+    <string name="nav_history_compact">Hist.</string>
     <string name="nav_measure">Medir</string>
+    <string name="nav_measure_compact">Medir</string>
     <string name="nav_reports">Relatórios</string>
+    <string name="nav_reports_compact">Relat.</string>
     <string name="nav_settings">Ajustes</string>
+    <string name="nav_settings_compact">Ajust.</string>
     <string name="history_title">Histórico</string>
     <string name="selected_measurement">Medição selecionada</string>
     <string name="open_full_detail">Abrir detalhe completo</string>
     <string name="measure_title">Registrar peso</string>
+    <string name="measure_intro">Escolha como registrar a próxima medição. O perfil ativo será usado no salvamento.</string>
     <string name="reports_title">Relatórios</string>
     <string name="settings_title">Ajustes</string>
     <string name="profiles_title">Perfis</string>
+    <string name="profiles_empty_title">Seu espaço de perfis está vazio</string>
     <string name="goals_title">Metas</string>
+    <string name="goals_profile_required_title">Selecione um perfil para criar metas</string>
+    <string name="goals_empty_title">Nenhuma meta definida</string>
     <string name="devices_title">Balanças conhecidas</string>
+    <string name="devices_empty_title">Nenhuma balança salva</string>
+    <string name="devices_load_error_title">Não foi possível carregar as balanças</string>
     <string name="privacy_title">Privacidade e dados</string>
+    <string name="privacy_delete_error_title">Não foi possível excluir todos os dados</string>
     <string name="about_title">Sobre</string>
     <string name="bluetooth_diagnostic">Diagnóstico Bluetooth</string>
     <string name="live_measurement_title">Medição com a balança</string>
     <string name="manual_measurement_title">Adicionar peso manualmente</string>
+    <string name="manual_measurement_body">Registre uma medição feita fora da balança Bluetooth.</string>
+    <string name="manual_profile_required_title">Um perfil é necessário</string>
     <string name="edit_measurement_title">Editar medição</string>
     <string name="measurement_detail_title">Detalhe da medição</string>
 
     <string name="measure_with_scale">Medir com a balança</string>
+    <string name="measure_with_scale_body">Inicie uma busca curta e suba na balança quando o aplicativo estiver pronto.</string>
     <string name="add_manual_weight">Adicionar manualmente</string>
+    <string name="add_manual_weight_body">Informe peso, data e horário quando a balança não estiver disponível.</string>
     <string name="open_diagnostic">Abrir diagnóstico Bluetooth</string>
 
     <string name="appearance_section">Aparência</string>
@@ -213,6 +230,7 @@
     <string name="share_summary">Compartilhar resumo</string>
     <string name="error_onboarding_save">Não foi possível concluir a configuração inicial.</string>
     <string name="working">Processando…</string>
+    <string name="loading_data">Carregando dados…</string>
     <string name="data_load_error">Não foi possível carregar os dados locais. Feche e abra o aplicativo para tentar novamente.</string>
 
     <string name="onboarding_step">Etapa %1$d de %2$d</string>
@@ -234,7 +252,7 @@
     <string name="profile_name">Nome do perfil</string>
     <string name="height_cm_optional">Altura em cm (opcional)</string>
     <string name="birth_date_optional">Nascimento (opcional)</string>
-    <string name="iso_date_hint">Formato: AAAA-MM-DD</string>
+    <string name="date_format_hint">Formato: DD-MM-AAAA</string>
     <string name="target_weight_optional">Meta em %1$s (opcional)</string>
     <string name="skip_onboarding">Pular por enquanto</string>
     <string name="back">Voltar</string>
@@ -264,7 +282,7 @@
     <string name="error_profile_name_required">Informe um nome para o perfil.</string>
     <string name="error_profile_name_long">O nome pode ter no máximo 80 caracteres.</string>
     <string name="error_profile_height">A altura deve estar entre 80 e 250 cm.</string>
-    <string name="error_profile_birth_date">Use uma data de nascimento válida no formato AAAA-MM-DD.</string>
+    <string name="error_profile_birth_date">Use uma data de nascimento válida no formato DD-MM-AAAA.</string>
     <string name="error_profile_future_birth">A data de nascimento não pode estar no futuro.</string>
     <string name="error_save_profile">Não foi possível salvar o perfil.</string>
 
@@ -338,7 +356,10 @@
     <string name="greeting_with_name">%1$s, %2$s</string>
     <string name="dashboard_scale_state">A balança só será procurada quando você iniciar uma medição.</string>
     <string name="dashboard_no_profile">Crie ou selecione um perfil para começar.</string>
+    <string name="dashboard_no_profile_title">Comece com um perfil</string>
     <string name="dashboard_no_measurements">Ainda não há medições neste perfil.</string>
+    <string name="dashboard_no_measurements_title">Seu histórico começa na primeira medição</string>
+    <string name="dashboard_load_error_title">Não foi possível abrir seu resumo</string>
     <string name="last_weight">Último peso</string>
     <string name="variation_insufficient">Ainda não há dados suficientes para comparar.</string>
     <string name="variation_unchanged">Sem alteração em relação à medição anterior.</string>
@@ -363,6 +384,9 @@
     <string name="goal_reached_neutral">O valor de destino foi alcançado ou ultrapassado.</string>
     <string name="goal_remaining">Distância até o destino: %1$.1f %2$s</string>
     <string name="goal_target_value">Destino: %1$.1f %2$s</string>
+    <string name="goal_start_value">Início: %1$.1f %2$s</string>
+    <string name="goal_current_value">Atual: %1$.1f %2$s</string>
+    <string name="goal_progress_waiting">Registre uma medição para acompanhar o progresso.</string>
     <string name="goal_health_notice">Metas são referências pessoais neutras. Decisões de saúde devem ser discutidas com um profissional qualificado.</string>
     <string name="no_goals">Ainda não há metas neste perfil.</string>
     <string name="goal_target_date">Prazo opcional: %1$s</string>
@@ -380,7 +404,7 @@
     <string name="delete_goal_body">O histórico de peso não será excluído.</string>
     <string name="error_goal_start">Informe um peso inicial válido entre 2 e 500 kg.</string>
     <string name="error_goal_target">Informe um peso desejado válido entre 2 e 500 kg.</string>
-    <string name="error_goal_date">Use uma data válida no formato AAAA-MM-DD.</string>
+    <string name="error_goal_date">Use uma data válida no formato DD-MM-AAAA.</string>
     <string name="error_goal_save">Não foi possível salvar a meta.</string>
 
     <string name="period_7_days">7 dias</string>
@@ -392,7 +416,7 @@
     <string name="period_custom">Personalizado</string>
     <string name="start_date">Data inicial</string>
     <string name="end_date">Data final</string>
-    <string name="invalid_custom_period">Informe um intervalo válido em AAAA-MM-DD.</string>
+    <string name="invalid_custom_period">Informe um intervalo válido em DD-MM-AAAA.</string>
     <string name="filter_by_source">Filtrar por origem</string>
     <string name="history_empty">Nenhuma medição encontrada para os filtros selecionados.</string>
     <string name="source_ble">Balança</string>
@@ -404,6 +428,8 @@
     <string name="measurement_deleted">Medição excluída.</string>
     <string name="undo">Desfazer</string>
     <string name="measurement_not_found">Esta medição não está mais disponível.</string>
+    <string name="measurement_not_found_title">Medição indisponível</string>
+    <string name="measurement_weight_label">Peso registrado</string>
     <string name="detail_profile">Perfil: %1$s</string>
     <string name="detail_source">Origem: %1$s</string>
     <string name="detail_device">Balança: %1$s</string>
@@ -425,6 +451,8 @@
     <string name="metric_metabolic_age">Idade metabólica medida: %1$d</string>
 
     <string name="reports_local_notice">PDF, CSV e backup são gerados localmente, sem internet.</string>
+    <string name="report_configuration_title">Configurar exportação</string>
+    <string name="report_configuration_body">Escolha o conteúdo e o período antes de gerar o arquivo.</string>
     <string name="report_format">Formato</string>
     <string name="json_backup_all_data">O backup JSON inclui todos os perfis, medições, metas, dispositivos conhecidos e preferências exportáveis.</string>
     <string name="report_period">Período</string>

@@ -1,0 +1,51 @@
+name: Proposta de recurso
+description: Sugira uma melhoria alinhada à privacidade e ao escopo do projeto.
+title: "[Ideia]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        O Controla Peso é local-first e não implementa telemetria, contas,
+        anúncios ou métricas corporais sem protocolo validado.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Qual problema você quer resolver?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposta
+      description: Descreva a experiência esperada, sem assumir uma solução técnica.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Área afetada
+      options:
+        - Bluetooth ou protocolo
+        - Privacidade ou dados
+        - Interface e acessibilidade
+        - Histórico, metas ou relatório
+        - Integração opcional
+        - Build, distribuição ou documentação
+        - Outra
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Confirmações
+      options:
+        - label: A proposta não requer conta, Internet, anúncios ou telemetria.
+          required: true
+        - label: A proposta não apresenta métrica corporal como medição sem evidência.
+          required: true

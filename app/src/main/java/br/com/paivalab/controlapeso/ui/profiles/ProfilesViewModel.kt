@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import br.com.paivalab.controlapeso.app.AppContainer
 import br.com.paivalab.controlapeso.core.id.IdGenerator
 import br.com.paivalab.controlapeso.core.time.AppClock
+import br.com.paivalab.controlapeso.core.time.BrazilianDateFormatter
 import br.com.paivalab.controlapeso.domain.model.Profile
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.domain.repository.ProfileRepository
@@ -75,7 +76,9 @@ class ProfilesViewModel(
                 name = profile.name,
                 avatarKey = profile.avatarKey ?: "ocean",
                 heightText = profile.heightCm?.toString().orEmpty(),
-                birthDateText = profile.birthDate?.toString().orEmpty(),
+                birthDateText = profile.birthDate
+                    ?.let(BrazilianDateFormatter::inputDigits)
+                    .orEmpty(),
                 unit = profile.preferredWeightUnit
             ),
             error = null
@@ -86,7 +89,9 @@ class ProfilesViewModel(
     fun setName(value: String) = updateForm { copy(name = value) }
     fun setAvatar(value: String) = updateForm { copy(avatarKey = value) }
     fun setHeight(value: String) = updateForm { copy(heightText = value) }
-    fun setBirthDate(value: String) = updateForm { copy(birthDateText = value) }
+    fun setBirthDate(value: String) = updateForm {
+        copy(birthDateText = BrazilianDateFormatter.inputDigits(value))
+    }
     fun setUnit(value: WeightUnit) = updateForm { copy(unit = value) }
 
     fun save() {
@@ -95,7 +100,9 @@ class ProfilesViewModel(
         val height = form.heightText.trim().replace(',', '.')
             .takeIf(String::isNotEmpty)?.toDoubleOrNull()
         val birthDate = try {
-            form.birthDateText.trim().takeIf(String::isNotEmpty)?.let(LocalDate::parse)
+            form.birthDateText.trim()
+                .takeIf(String::isNotEmpty)
+                ?.let(BrazilianDateFormatter::parse)
         } catch (_: DateTimeException) {
             editor.update { it.copy(error = ProfileFormError.INVALID_BIRTH_DATE) }
             return

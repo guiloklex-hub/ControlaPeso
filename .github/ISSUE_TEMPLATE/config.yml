@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Reportar vulnerabilidade
+    url: https://github.com/guiloklex-hub/ControlaPeso/security/advisories/new
+    about: Use uma Security Advisory privada para problemas de segurança.
+  - name: Documentação BLE
+    url: https://github.com/guiloklex-hub/ControlaPeso/blob/main/docs/BLE_PHYSICAL_VALIDATION.md
+    about: Consulte o roteiro antes de propor alteração de protocolo.
