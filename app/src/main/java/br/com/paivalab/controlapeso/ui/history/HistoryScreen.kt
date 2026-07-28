@@ -18,7 +18,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,13 +30,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
+import br.com.paivalab.controlapeso.core.time.BrazilianDateFormatter
 import br.com.paivalab.controlapeso.core.time.MeasurementTimeFormatter
 import br.com.paivalab.controlapeso.domain.model.MeasurementSource
 import br.com.paivalab.controlapeso.domain.model.WeightMeasurement
 import br.com.paivalab.controlapeso.data.preferences.ChartSize
 import br.com.paivalab.controlapeso.data.preferences.HistoryGrouping
+import br.com.paivalab.controlapeso.ui.components.BrazilianDateTextField
 import br.com.paivalab.controlapeso.ui.components.WeightChart
+import java.time.format.DateTimeFormatter
 import java.time.YearMonth
+import java.util.Locale
 
 @Composable
 fun HistoryScreen(
@@ -85,19 +88,17 @@ fun HistoryScreen(
             if (state.filters.range == HistoryRange.CUSTOM) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(
+                        BrazilianDateTextField(
                             value = state.filters.customStartText,
                             onValueChange = onCustomStartChange,
-                            label = { Text(stringResource(R.string.start_date)) },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
+                            label = stringResource(R.string.start_date),
+                            modifier = Modifier.fillMaxWidth()
                         )
-                        OutlinedTextField(
+                        BrazilianDateTextField(
                             value = state.filters.customEndText,
                             onValueChange = onCustomEndChange,
-                            label = { Text(stringResource(R.string.end_date)) },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
+                            label = stringResource(R.string.end_date),
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                     if (state.filters.invalidCustomRange) {
@@ -432,14 +433,19 @@ private fun groupLabel(
     return when (grouping) {
         HistoryGrouping.NONE -> null
         HistoryGrouping.DAY ->
-            date.takeIf { previousDate != it }?.toString()
+            date.takeIf { previousDate != it }?.let(BrazilianDateFormatter::format)
         HistoryGrouping.MONTH -> {
             val month = YearMonth.from(date)
             month.takeIf { previousDate == null || YearMonth.from(previousDate) != it }
-                ?.toString()
+                ?.format(monthFormatter)
         }
     }
 }
+
+private val monthFormatter = DateTimeFormatter.ofPattern(
+    "MMMM 'de' uuuu",
+    Locale.forLanguageTag("pt-BR")
+)
 
 @Composable
 private fun historyRangeText(range: HistoryRange): String = stringResource(

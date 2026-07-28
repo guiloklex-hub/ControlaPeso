@@ -19,7 +19,7 @@ private val Context.controlaPesoPreferences by preferencesDataStore(
 )
 
 class AppPreferencesRepository(context: Context) {
-    private val dataStore = context.applicationContext.controlaPesoPreferences
+    private val dataStore = (context.applicationContext ?: context).controlaPesoPreferences
 
     val preferences: Flow<AppPreferences> = dataStore.data
         .catch { exception ->

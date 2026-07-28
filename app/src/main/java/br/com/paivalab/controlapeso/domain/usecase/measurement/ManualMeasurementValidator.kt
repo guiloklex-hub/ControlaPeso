@@ -1,6 +1,7 @@
 package br.com.paivalab.controlapeso.domain.usecase.measurement
 
 import br.com.paivalab.controlapeso.core.time.AppClock
+import br.com.paivalab.controlapeso.core.time.BrazilianDateFormatter
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import java.time.DateTimeException
 import java.time.Instant
@@ -61,7 +62,7 @@ class ManualMeasurementValidator(
         }
 
         val date = try {
-            LocalDate.parse(input.dateText.trim())
+            BrazilianDateFormatter.parse(input.dateText)
         } catch (_: DateTimeException) {
             errors += ManualValidationError.INVALID_DATE
             null

@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.domain.usecase.measurement.ManualValidationError
+import br.com.paivalab.controlapeso.ui.components.BrazilianDateTextField
 
 @Composable
 fun ManualMeasurementScreen(
@@ -111,12 +112,10 @@ fun ManualMeasurementScreen(
             }
         }
         item {
-            OutlinedTextField(
+            BrazilianDateTextField(
                 value = state.dateText,
                 onValueChange = onDateChange,
-                label = { Text(stringResource(R.string.date_label)) },
-                supportingText = { Text(stringResource(R.string.iso_date_hint)) },
-                singleLine = true,
+                label = stringResource(R.string.date_label),
                 modifier = Modifier.fillMaxWidth()
             )
         }

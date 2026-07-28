@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import br.com.paivalab.controlapeso.app.AppContainer
+import br.com.paivalab.controlapeso.core.time.BrazilianDateFormatter
 import br.com.paivalab.controlapeso.domain.model.Profile
 import br.com.paivalab.controlapeso.domain.model.MeasurementSource
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
@@ -81,7 +82,7 @@ class ManualMeasurementViewModel(
     private fun initialState(): ManualMeasurementUiState {
         val localDateTime = container.clock.now().atZone(ZoneId.systemDefault())
         return ManualMeasurementUiState(
-            dateText = localDateTime.toLocalDate().toString(),
+            dateText = BrazilianDateFormatter.inputDigits(localDateTime.toLocalDate()),
             timeText = localDateTime.toLocalTime()
                 .format(DateTimeFormatter.ofPattern("HH:mm"))
         )
@@ -100,7 +101,9 @@ class ManualMeasurementViewModel(
 
     fun setWeight(value: String) = update { copy(weightText = value) }
     fun setUnit(value: WeightUnit) = update { copy(unit = value) }
-    fun setDate(value: String) = update { copy(dateText = value) }
+    fun setDate(value: String) = update {
+        copy(dateText = BrazilianDateFormatter.inputDigits(value))
+    }
     fun setTime(value: String) = update { copy(timeText = value) }
     fun setNote(value: String) = update { copy(note = value.take(500)) }
     fun dismissDuplicate() = local.update { it.copy(probableDuplicate = false) }
@@ -171,7 +174,7 @@ class ManualMeasurementViewModel(
                     selectedProfileId = measurement.profileId,
                     weightText = unit.fromKilograms(measurement.weightKg).toString(),
                     unit = unit,
-                    dateText = localDateTime.toLocalDate().toString(),
+                    dateText = BrazilianDateFormatter.inputDigits(localDateTime.toLocalDate()),
                     timeText = localDateTime.toLocalTime()
                         .format(DateTimeFormatter.ofPattern("HH:mm")),
                     note = measurement.note.orEmpty()

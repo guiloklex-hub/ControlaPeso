@@ -23,7 +23,14 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    testBuildType = "instrumented"
+
     buildTypes {
+        create("instrumented") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".instrumented"
+            matchingFallbacks += listOf("debug")
+        }
         release {
             optimization {
                 enable = false
@@ -77,5 +84,6 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.room.testing)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    add("instrumentedImplementation", libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

@@ -31,7 +31,7 @@ class ManualMeasurementValidatorTest {
         val invalid = validator.validate(
             validInput(
                 weight = "700",
-                date = "2027-01-01",
+                date = "01-01-2027",
                 note = "x".repeat(501)
             )
         )
@@ -51,7 +51,7 @@ class ManualMeasurementValidatorTest {
 
     private fun validInput(
         weight: String = "75.0",
-        date: String = "2026-07-27",
+        date: String = "27-07-2026",
         time: String = "16:30",
         unit: WeightUnit = WeightUnit.KILOGRAM,
         note: String = ""

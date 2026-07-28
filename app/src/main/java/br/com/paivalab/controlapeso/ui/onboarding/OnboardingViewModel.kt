@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import br.com.paivalab.controlapeso.app.AppContainer
 import br.com.paivalab.controlapeso.core.id.IdGenerator
 import br.com.paivalab.controlapeso.core.time.AppClock
+import br.com.paivalab.controlapeso.core.time.BrazilianDateFormatter
 import br.com.paivalab.controlapeso.data.preferences.AppPreferencesRepository
 import br.com.paivalab.controlapeso.data.preferences.ThemeMode
 import br.com.paivalab.controlapeso.domain.model.Profile
@@ -65,7 +66,12 @@ class OnboardingViewModel(
     fun setHeight(value: String) =
         _uiState.update { it.copy(heightText = value, error = null) }
     fun setBirthDate(value: String) =
-        _uiState.update { it.copy(birthDateText = value, error = null) }
+        _uiState.update {
+            it.copy(
+                birthDateText = BrazilianDateFormatter.inputDigits(value),
+                error = null
+            )
+        }
     fun setUnit(value: WeightUnit) =
         _uiState.update { it.copy(unit = value, error = null) }
     fun setTargetWeight(value: String) =
@@ -87,7 +93,7 @@ class OnboardingViewModel(
         val birthDate = try {
             current.birthDateText.trim()
                 .takeIf(String::isNotEmpty)
-                ?.let(LocalDate::parse)
+                ?.let(BrazilianDateFormatter::parse)
         } catch (_: DateTimeException) {
             _uiState.update { it.copy(error = OnboardingError.INVALID_BIRTH_DATE) }
             return

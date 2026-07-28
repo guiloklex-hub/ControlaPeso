@@ -15,7 +15,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,6 +28,7 @@ import br.com.paivalab.controlapeso.R
 import br.com.paivalab.controlapeso.data.backup.RestoreMode
 import br.com.paivalab.controlapeso.data.export.ReportFormat
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
+import br.com.paivalab.controlapeso.ui.components.BrazilianDateTextField
 
 @Composable
 fun ReportsScreen(
@@ -108,16 +108,16 @@ fun ReportsScreen(
                         }
                         if (state.period == ReportPeriod.CUSTOM) {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedTextField(
+                                BrazilianDateTextField(
                                     value = state.customStartText,
                                     onValueChange = onCustomStartChange,
-                                    label = { Text(stringResource(R.string.start_date)) },
+                                    label = stringResource(R.string.start_date),
                                     modifier = Modifier.fillMaxWidth()
                                 )
-                                OutlinedTextField(
+                                BrazilianDateTextField(
                                     value = state.customEndText,
                                     onValueChange = onCustomEndChange,
-                                    label = { Text(stringResource(R.string.end_date)) },
+                                    label = stringResource(R.string.end_date),
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }

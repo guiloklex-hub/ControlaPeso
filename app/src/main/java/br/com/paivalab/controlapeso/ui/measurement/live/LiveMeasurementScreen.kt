@@ -389,7 +389,7 @@ private fun MeasurementCard(state: BleMeasurementUiState) {
                 } ?: stringResource(R.string.waiting_for_scale),
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center,
-                fontSize = 42.sp,
+                fontSize = if (reading == null) 22.sp else 42.sp,
                 fontWeight = FontWeight.Bold
             )
             val progress = state.stability

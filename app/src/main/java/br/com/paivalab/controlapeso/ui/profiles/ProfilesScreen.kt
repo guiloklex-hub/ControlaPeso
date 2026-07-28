@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
 import br.com.paivalab.controlapeso.domain.model.Profile
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
+import br.com.paivalab.controlapeso.ui.components.BrazilianDateTextField
 
 @Composable
 fun ProfilesScreen(
@@ -216,12 +217,10 @@ private fun ProfileDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true
                 )
-                OutlinedTextField(
+                BrazilianDateTextField(
                     value = form.birthDateText,
                     onValueChange = onBirthDateChange,
-                    label = { Text(stringResource(R.string.birth_date_optional)) },
-                    supportingText = { Text(stringResource(R.string.iso_date_hint)) },
-                    singleLine = true
+                    label = stringResource(R.string.birth_date_optional)
                 )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     WeightUnit.entries.forEach { unit ->

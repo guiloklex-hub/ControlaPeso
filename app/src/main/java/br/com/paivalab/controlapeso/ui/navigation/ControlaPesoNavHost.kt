@@ -88,6 +88,15 @@ fun ControlaPesoNavHost(
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    val navigateToPrimaryDestination: (AppDestination) -> Unit = { destination ->
+        navController.navigate(destination.route) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = false
+            }
+            launchSingleTop = true
+            restoreState = false
+        }
+    }
     LaunchedEffect(requestedDestination) {
         if (requestedDestination in internalNotificationDestinations) {
             navController.navigate(requireNotNull(requestedDestination)) {
@@ -109,15 +118,7 @@ fun ControlaPesoNavHost(
                                 modifier = Modifier.testTag(
                                     "primary_navigation_${destination.route}"
                                 ),
-                                onClick = {
-                                    navController.navigate(destination.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
+                                onClick = { navigateToPrimaryDestination(destination) },
                                 icon = {
                                     destination.icon?.let {
                                         Icon(
@@ -147,15 +148,7 @@ fun ControlaPesoNavHost(
                                 modifier = Modifier.testTag(
                                     "primary_navigation_${destination.route}"
                                 ),
-                                onClick = {
-                                    navController.navigate(destination.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
+                                onClick = { navigateToPrimaryDestination(destination) },
                                 icon = {
                                     destination.icon?.let {
                                         Icon(

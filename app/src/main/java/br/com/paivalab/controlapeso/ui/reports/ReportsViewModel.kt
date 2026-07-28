@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import br.com.paivalab.controlapeso.app.AppContainer
+import br.com.paivalab.controlapeso.core.time.BrazilianDateFormatter
 import br.com.paivalab.controlapeso.data.backup.BackupPreview
 import br.com.paivalab.controlapeso.data.backup.BackupPreviewResult
 import br.com.paivalab.controlapeso.data.backup.BackupRestoreResult
@@ -22,9 +23,7 @@ import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.domain.usecase.statistics.MeasurementStatistics
 import br.com.paivalab.controlapeso.worker.ReportCacheCleaner
 import java.io.ByteArrayOutputStream
-import java.time.DateTimeException
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -126,8 +125,12 @@ class ReportsViewModel(
         }
     }
     fun setPeriod(value: ReportPeriod) = update { copy(period = value) }
-    fun setCustomStart(value: String) = update { copy(customStartText = value) }
-    fun setCustomEnd(value: String) = update { copy(customEndText = value) }
+    fun setCustomStart(value: String) = update {
+        copy(customStartText = BrazilianDateFormatter.inputDigits(value))
+    }
+    fun setCustomEnd(value: String) = update {
+        copy(customEndText = BrazilianDateFormatter.inputDigits(value))
+    }
     fun setFormat(value: ReportFormat) = update { copy(format = value) }
     fun setIncludeChart(value: Boolean) = update { copy(includeChart = value) }
     fun setIncludeTable(value: Boolean) = update { copy(includeTable = value) }
@@ -424,19 +427,12 @@ class ReportsViewModel(
             ReportPeriod.MONTHS_3 -> today.minusMonths(3)
             ReportPeriod.MONTHS_6 -> today.minusMonths(6)
             ReportPeriod.YEAR_1 -> today.minusYears(1)
-            ReportPeriod.CUSTOM -> try {
-                LocalDate.parse(state.customStartText)
-            } catch (_: DateTimeException) {
-                return null
-            }
+            ReportPeriod.CUSTOM ->
+                BrazilianDateFormatter.parseOrNull(state.customStartText) ?: return null
             ReportPeriod.ALL -> return null
         }
         val end = if (state.period == ReportPeriod.CUSTOM) {
-            try {
-                LocalDate.parse(state.customEndText)
-            } catch (_: DateTimeException) {
-                return null
-            }
+            BrazilianDateFormatter.parseOrNull(state.customEndText) ?: return null
         } else {
             today
         }

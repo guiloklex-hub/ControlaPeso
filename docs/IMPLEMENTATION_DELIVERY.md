@@ -116,6 +116,28 @@ app/build/reports/tests/testDebugUnitTest/index.html
 app/build/reports/lint-results-debug.html
 ```
 
+### Validação posterior no telefone — 28/07/2026
+
+No Samsung `SM-S908E`, Android 16/API 36:
+
+- `./gradlew test lint assembleDebug assembleRelease
+  assembleInstrumentedAndroidTest --continue` concluiu com sucesso;
+- `./gradlew connectedAndroidTest` executou 16/16 testes, sem falhas;
+- a atividade normal `br.com.paivalab.controlapeso/.MainActivity` continuou
+  instalada e abriu após os testes;
+- a busca BLE encontrou a `Yoda1`, trocou de `LOW_POWER` para `LOW_LATENCY`
+  após anúncio OKOK e apresentou **Peso estabilizado** (`102,85 kg`) na UI.
+
+A observação BLE não comparou o valor com o visor nem acionou o salvamento,
+portanto não confirma unidade nem persistência. Durante uma execução anterior,
+direta na variante `debug`, o cleanup do runner removeu o pacote-alvo e os
+dados locais dessa instalação. Para impedir repetição, `connectedAndroidTest`
+agora usa a variante isolada `instrumented`, com outro package. Nenhuma
+tentativa de restaurar dados locais foi feita sem um backup JSON fornecido pelo
+usuário. Uma repetição posterior dos smoke tests Compose precisa ser feita com
+o telefone desbloqueado: com a tela bloqueada, quatro testes não receberam a
+hierarquia de UI.
+
 ## Testes criados
 
 Unitários:

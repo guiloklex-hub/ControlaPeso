@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
 import br.com.paivalab.controlapeso.data.preferences.ThemeMode
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
+import br.com.paivalab.controlapeso.ui.components.BrazilianDateTextField
 
 @Composable
 fun OnboardingScreen(
@@ -205,12 +206,10 @@ private fun ProfileStep(
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
-        OutlinedTextField(
+        BrazilianDateTextField(
             value = state.birthDateText,
             onValueChange = onBirthDateChange,
-            label = { Text(stringResource(R.string.birth_date_optional)) },
-            supportingText = { Text(stringResource(R.string.iso_date_hint)) },
-            singleLine = true,
+            label = stringResource(R.string.birth_date_optional),
             modifier = Modifier.fillMaxWidth()
         )
         UnitSelector(state.unit, onUnitChange)

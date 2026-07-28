@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import br.com.paivalab.controlapeso.app.AppContainer
+import br.com.paivalab.controlapeso.core.time.BrazilianDateFormatter
 import br.com.paivalab.controlapeso.data.preferences.AppPreferences
 import br.com.paivalab.controlapeso.domain.model.MeasurementSource
 import br.com.paivalab.controlapeso.domain.model.Profile
@@ -142,10 +143,20 @@ class HistoryViewModel(
         filters.update { it.copy(range = value, invalidCustomRange = false) }
 
     fun setCustomStart(value: String) =
-        filters.update { it.copy(customStartText = value, invalidCustomRange = false) }
+        filters.update {
+            it.copy(
+                customStartText = BrazilianDateFormatter.inputDigits(value),
+                invalidCustomRange = false
+            )
+        }
 
     fun setCustomEnd(value: String) =
-        filters.update { it.copy(customEndText = value, invalidCustomRange = false) }
+        filters.update {
+            it.copy(
+                customEndText = BrazilianDateFormatter.inputDigits(value),
+                invalidCustomRange = false
+            )
+        }
 
     fun toggleSource(source: MeasurementSource) = filters.update { current ->
         current.copy(

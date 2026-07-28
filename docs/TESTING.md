@@ -9,7 +9,7 @@ Na raiz, com JDK 21:
 ./gradlew lint
 ./gradlew assembleDebug
 ./gradlew assembleRelease
-./gradlew assembleDebugAndroidTest
+./gradlew assembleInstrumentedAndroidTest
 ```
 
 Com emulador ou telefone autorizado:
@@ -18,26 +18,43 @@ Com emulador ou telefone autorizado:
 ./gradlew connectedAndroidTest
 ```
 
-## Último checkpoint local
+`connectedAndroidTest` usa a variante descartável `instrumented`, com package
+`br.com.paivalab.controlapeso.instrumented`. Ela existe para que a limpeza do
+runner não altere o APK `debug` usado manualmente nem seus dados locais.
+Não execute `connectedDebugAndroidTest` sobre dados que precisem ser
+preservados: em 28/07/2026 o runner removeu o pacote-alvo `debug` ao encerrar
+uma execução direta. Exporte um JSON antes de qualquer teste que não use a
+variante isolada.
 
-Em 27/07/2026:
+## Último checkpoint local e no telefone
+
+Em 28/07/2026, com JDK 21:
 
 ```bash
-./gradlew clean test lint assembleDebug assembleRelease assembleDebugAndroidTest --continue
+./gradlew test lint assembleDebug assembleRelease assembleInstrumentedAndroidTest --continue
+./gradlew connectedAndroidTest
 ```
 
-Resultado: sucesso em 139 tarefas; 64 testes JVM, zero falhas/erros/ignorados;
-lint com zero erros e 21 avisos não bloqueantes; APKs debug, release não
-assinado e instrumentado gerados. `git diff --check` também passou.
+Resultado local: sucesso em 161 tarefas; testes JVM, lint, APK debug, release
+não assinado e APK instrumentado gerados sem falha. O lint não introduziu erros
+bloqueantes.
 
-`adb devices -l` retornou a lista vazia e não havia AVD configurado. Portanto,
-os cinco testes instrumentados foram compilados, mas não executados nesse
-checkpoint; `connectedAndroidTest` continua pendente até um aparelho ou
-emulador estar disponível.
+No checkpoint final no Samsung `SM-S908E`, Android 16/API 36,
+`connectedAndroidTest` concluiu 18/18 testes, sem falhas ou ignorados. Ao final, o package normal
+`br.com.paivalab.controlapeso` continuava instalado e em primeiro plano. O
+runner exibiu uma mensagem não bloqueante de `appops` para
+`androidx.test.services`, mas a execução Gradle e todos os testes concluíram
+com sucesso.
+
+Uma repetição posterior foi interrompida porque o telefone estava bloqueado:
+os quatro smoke tests Compose falharam sem hierarquia de UI enquanto
+`isKeyguardShowing=true`. Isso não aponta uma falha do app, mas a repetição
+final deve ocorrer com a tela desbloqueada e acesa.
 
 Cobertura unitária inclui:
 
 - hexadecimal, little-endian, parsers Chipsea e OKOK com capturas douradas;
+- formatação, máscara e validação estrita de datas `DD-MM-AAAA`;
 - estabilidade, leitura BLE, duplicidade e seleção segura de perfil;
 - kg/lb, validação manual, IMC, metas e estatísticas;
 - intervalos de histórico, transição de horário de verão, offset persistido e
@@ -50,9 +67,10 @@ Cobertura unitária inclui:
 
 Testes instrumentados cobrem Room/FKs/transações e todos os repositories,
 persistência DataStore, contrato de permissões do manifest, FileProvider,
-geração PDF multi-página e telas Compose essenciais. A UI inclui navegação,
-fonte ampliada, tema escuro e o histórico lista-detalhe em 840 dp sem endereço
-BLE. Um APK de testes compilado não substitui `connectedAndroidTest`.
+geração PDF multi-página e telas Compose essenciais. A UI inclui navegação
+primária que volta à raiz, máscara de data com digitação sequencial, fonte
+ampliada, tema escuro e o histórico lista-detalhe em 840 dp sem endereço BLE.
+Um APK de testes compilado não substitui `connectedAndroidTest`.
 
 ## BLE físico
 

@@ -25,8 +25,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
+import br.com.paivalab.controlapeso.core.time.BrazilianDateFormatter
 import br.com.paivalab.controlapeso.domain.model.GoalStatus
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
+import br.com.paivalab.controlapeso.ui.components.BrazilianDateTextField
 
 @Composable
 fun GoalsScreen(
@@ -110,7 +112,12 @@ fun GoalsScreen(
                         )
                     }
                     goal.targetDate?.let {
-                        Text(stringResource(R.string.goal_target_date, it.toString()))
+                        Text(
+                            stringResource(
+                                R.string.goal_target_date,
+                                BrazilianDateFormatter.format(it)
+                            )
+                        )
                     }
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(onClick = { onEdit(goal) }) {
@@ -186,11 +193,10 @@ fun GoalsScreen(
                             keyboardType = KeyboardType.Decimal
                         )
                     )
-                    OutlinedTextField(
+                    BrazilianDateTextField(
                         value = form.targetDateText,
                         onValueChange = onDateChange,
-                        label = { Text(stringResource(R.string.target_date_optional)) },
-                        supportingText = { Text(stringResource(R.string.iso_date_hint)) }
+                        label = stringResource(R.string.target_date_optional)
                     )
                     state.error?.let {
                         Text(goalErrorText(it), color = MaterialTheme.colorScheme.error)

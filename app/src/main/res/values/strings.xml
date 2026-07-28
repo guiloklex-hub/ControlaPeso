@@ -234,7 +234,7 @@
     <string name="profile_name">Nome do perfil</string>
     <string name="height_cm_optional">Altura em cm (opcional)</string>
     <string name="birth_date_optional">Nascimento (opcional)</string>
-    <string name="iso_date_hint">Formato: AAAA-MM-DD</string>
+    <string name="date_format_hint">Formato: DD-MM-AAAA</string>
     <string name="target_weight_optional">Meta em %1$s (opcional)</string>
     <string name="skip_onboarding">Pular por enquanto</string>
     <string name="back">Voltar</string>
@@ -264,7 +264,7 @@
     <string name="error_profile_name_required">Informe um nome para o perfil.</string>
     <string name="error_profile_name_long">O nome pode ter no máximo 80 caracteres.</string>
     <string name="error_profile_height">A altura deve estar entre 80 e 250 cm.</string>
-    <string name="error_profile_birth_date">Use uma data de nascimento válida no formato AAAA-MM-DD.</string>
+    <string name="error_profile_birth_date">Use uma data de nascimento válida no formato DD-MM-AAAA.</string>
     <string name="error_profile_future_birth">A data de nascimento não pode estar no futuro.</string>
     <string name="error_save_profile">Não foi possível salvar o perfil.</string>
 
@@ -380,7 +380,7 @@
     <string name="delete_goal_body">O histórico de peso não será excluído.</string>
     <string name="error_goal_start">Informe um peso inicial válido entre 2 e 500 kg.</string>
     <string name="error_goal_target">Informe um peso desejado válido entre 2 e 500 kg.</string>
-    <string name="error_goal_date">Use uma data válida no formato AAAA-MM-DD.</string>
+    <string name="error_goal_date">Use uma data válida no formato DD-MM-AAAA.</string>
     <string name="error_goal_save">Não foi possível salvar a meta.</string>
 
     <string name="period_7_days">7 dias</string>
@@ -392,7 +392,7 @@
     <string name="period_custom">Personalizado</string>
     <string name="start_date">Data inicial</string>
     <string name="end_date">Data final</string>
-    <string name="invalid_custom_period">Informe um intervalo válido em AAAA-MM-DD.</string>
+    <string name="invalid_custom_period">Informe um intervalo válido em DD-MM-AAAA.</string>
     <string name="filter_by_source">Filtrar por origem</string>
     <string name="history_empty">Nenhuma medição encontrada para os filtros selecionados.</string>
     <string name="source_ble">Balança</string>

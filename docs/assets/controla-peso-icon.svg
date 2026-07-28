@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" role="img" aria-labelledby="title desc">
+  <title id="title">Ícone do Controla Peso</title>
+  <desc id="desc">Uma balança com mostrador e linha de evolução de peso.</desc>
+  <rect width="108" height="108" rx="26" fill="#006A65"/>
+  <path d="M-8 88C9 71 24 73 39 88c15 15 31 16 48-1 9-9 20-12 29-11v32H-8Z" fill="#167D77"/>
+  <path d="M-8 100c19-12 34-10 48 4 14 14 34 13 48-1 11-11 21-12 28-10v23H-8Z" fill="#00504C"/>
+  <path d="M34 22h40c7.7 0 14 6.3 14 14v38c0 8.8-7.2 16-16 16H36c-8.8 0-16-7.2-16-16V36c0-7.7 6.3-14 14-14Z" fill="#F7FFFD"/>
+  <path d="M34 22h40c7.7 0 14 6.3 14 14v4c0-7.7-6.3-14-14-14H34c-7.7 0-14 6.3-14 14v-4c0-7.7 6.3-14 14-14Z" fill="#D9F5F1"/>
+  <rect x="31" y="34" width="46" height="25" rx="8" fill="#00504C"/>
+  <path d="M54 38c6.6 0 12 5.4 12 12H42c0-6.6 5.4-12 12-12Z" fill="#A7F3EC"/>
+  <path d="m52.5 49.5 8.3-6.8c.9-.7 2.1.4 1.4 1.4l-6.8 8.3c-1.1 1.4-4.3-1.1-2.9-2.9Z" fill="#006A65"/>
+  <circle cx="54" cy="50" r="2.8" fill="#006A65"/>
+  <path d="m34 74 10-9 8 5 15-15 8 5" fill="none" stroke="#006A65" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="75" cy="60" r="4" fill="#70DDD4"/>
+</svg>

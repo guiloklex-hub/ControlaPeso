@@ -1,6 +1,8 @@
 package br.com.paivalab.controlapeso.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -9,8 +11,10 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
@@ -50,13 +54,13 @@ class UiSmokeInstrumentedTest {
                 LocalDensity provides Density(density.density, fontScale = 2f)
             ) {
                 ControlaPesoTheme(themeMode = ThemeMode.LIGHT, dynamicColor = false) {
-                    Box(Modifier.width(320.dp)) {
+                    Box(Modifier.fillMaxSize().width(320.dp)) {
                         ManualMeasurementScreen(
                             state = ManualMeasurementUiState(
                                 profiles = listOf(profile),
                                 selectedProfileId = profile.id,
                                 weightText = "75,4",
-                                dateText = "2026-07-27",
+                                dateText = "27-07-2026",
                                 timeText = "18:30"
                             ),
                             editing = false,
@@ -77,7 +81,12 @@ class UiSmokeInstrumentedTest {
             }
         }
 
-        composeRule.onNodeWithText("Salvar medição").performScrollTo().performClick()
+        repeat(4) {
+            composeRule.onRoot().performTouchInput { swipeUp() }
+        }
+        composeRule.onNodeWithText("Salvar medição", useUnmergedTree = true)
+            .assertIsDisplayed()
+            .performClick()
 
         assertTrue(saved.get())
     }
@@ -109,7 +118,7 @@ class UiSmokeInstrumentedTest {
         val measurement = measurement()
         composeRule.setContent {
             ControlaPesoTheme(dynamicColor = false) {
-                Box(Modifier.width(840.dp)) {
+                Box(Modifier.fillMaxSize().requiredWidth(840.dp)) {
                     HistoryScreen(
                         state = HistoryUiState(
                             isLoading = false,
@@ -129,6 +138,9 @@ class UiSmokeInstrumentedTest {
             }
         }
 
+        repeat(2) {
+            composeRule.onRoot().performTouchInput { swipeUp() }
+        }
         composeRule.onNodeWithText("Medição selecionada").assertIsDisplayed()
         composeRule.onNodeWithText("Abrir detalhe completo").assertIsDisplayed()
         composeRule.onAllNodesWithText("AA:BB:CC:DD:EE:FF").fetchSemanticsNodes()
@@ -156,6 +168,35 @@ class UiSmokeInstrumentedTest {
         composeRule.onNodeWithTag("primary_navigation_history").performClick()
 
         composeRule.onNodeWithText("Filtrar por origem").assertIsDisplayed()
+    }
+
+    @Test
+    fun primaryNavigationReturnsToTheMeasureRootInsteadOfRestoringAChildScreen() {
+        val application = InstrumentationRegistry.getInstrumentation()
+            .targetContext.applicationContext as ControlaPesoApplication
+        val scannerViewModel = ScannerViewModel(application)
+        composeRule.setContent {
+            ControlaPesoTheme(dynamicColor = false) {
+                ControlaPesoNavHost(
+                    container = application.container,
+                    scannerViewModel = scannerViewModel,
+                    onRequestBlePermissions = {},
+                    onShareText = {},
+                    onCopyText = {},
+                    onShareFile = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("primary_navigation_measure").performClick()
+        composeRule.onNodeWithText("Adicionar manualmente").performClick()
+        composeRule.onNodeWithText("Adicionar peso manualmente").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("primary_navigation_history").performClick()
+        composeRule.onNodeWithText("Filtrar por origem").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("primary_navigation_measure").performClick()
+        composeRule.onNodeWithText("Adicionar manualmente").assertIsDisplayed()
     }
 
     private fun profile(): Profile {
