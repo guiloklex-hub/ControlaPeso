@@ -8,6 +8,7 @@ import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.WeightRecord
 import br.com.paivalab.controlapeso.domain.model.WeightMeasurement
+import kotlinx.coroutines.CancellationException
 
 enum class HealthConnectAvailability {
     AVAILABLE,
@@ -50,10 +51,14 @@ class HealthConnectWeightWriter(context: Context) {
 
     suspend fun hasWritePermission(): Boolean {
         if (availability() != HealthConnectAvailability.AVAILABLE) return false
-        return runCatching {
+        return try {
             client().permissionController.getGrantedPermissions()
                 .containsAll(requiredPermissions)
-        }.getOrDefault(false)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     suspend fun write(measurement: WeightMeasurement): HealthConnectWriteResult {
@@ -75,6 +80,8 @@ class HealthConnectWeightWriter(context: Context) {
             listOf(HealthConnectWeightMapper.toRecord(measurement))
         )
         HealthConnectWriteResult.Written
+    } catch (cancellation: CancellationException) {
+        throw cancellation
     } catch (error: Exception) {
         HealthConnectWriteResult.Failed(error)
     }

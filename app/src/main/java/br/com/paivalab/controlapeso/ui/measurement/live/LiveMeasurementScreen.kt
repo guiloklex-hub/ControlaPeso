@@ -10,11 +10,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
@@ -29,6 +29,14 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -50,6 +58,11 @@ import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.domain.usecase.measurement.SaveBleResult
 import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
 import br.com.paivalab.controlapeso.ui.designsystem.components.ErrorState
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactAction
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactActionButton
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactActionGroup
+import br.com.paivalab.controlapeso.ui.designsystem.components.MeasurementUnitSelector
+import br.com.paivalab.controlapeso.ui.designsystem.components.ProfileContextHeader
 import br.com.paivalab.controlapeso.ui.designsystem.components.StatusPill
 import kotlinx.coroutines.delay
 
@@ -60,6 +73,7 @@ fun LiveMeasurementScreen(
     onStart: () -> Unit,
     onStop: () -> Unit,
     onProfileChange: (String) -> Unit,
+    onClearProfile: () -> Unit = {},
     onConfirmUnit: (WeightUnit) -> Unit,
     onClearUnit: () -> Unit,
     onNoteChange: (String) -> Unit,
@@ -74,6 +88,8 @@ fun LiveMeasurementScreen(
     onUndoDeleteSaved: () -> Unit,
     onConsumeDeletedMeasurement: () -> Unit,
     onShare: () -> Unit,
+    onDismissError: () -> Unit = {},
+    onSwitchProfile: () -> Unit = {},
     modifier: Modifier = Modifier,
     demoMode: Boolean = false
 ) {
@@ -139,7 +155,24 @@ fun LiveMeasurementScreen(
                 verticalArrangement = Arrangement.spacedBy(
                     ControlaPesoDesignSystem.spacing.md
                 )
-            ) {
+        ) {
+        item {
+            val selectedProfile = state.profiles.firstOrNull {
+                it.id == state.selectedProfileId
+            }
+            ProfileContextHeader(
+                name = selectedProfile?.name,
+                unitSymbol = state.preferences.defaultWeightUnit.symbol,
+                noProfileLabel = stringResource(R.string.unassigned_profile),
+                unitLabel = stringResource(R.string.dashboard_unit_label),
+                switchLabel = stringResource(R.string.switch_profile),
+                onSwitchProfile = onSwitchProfile,
+                photoPath = state.selectedProfileId?.let {
+                    state.profilePhotoPaths[it]
+                },
+                avatarKey = selectedProfile?.avatarKey
+            )
+        }
         item {
             Text(
                 stringResource(R.string.live_measurement_title),
@@ -154,25 +187,33 @@ fun LiveMeasurementScreen(
                 )
             }
         }
-        item {
-            EnvironmentSummary(state)
-        }
         if (state.profiles.isEmpty()) {
             item {
                 Text(
-                    stringResource(R.string.profile_required_before_measurement),
-                    color = MaterialTheme.colorScheme.error
+                    stringResource(R.string.measurement_without_profile_body),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         } else {
             item {
                 Text(stringResource(R.string.profile_label), fontWeight = FontWeight.SemiBold)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = state.selectedProfileId == null,
+                        onClick = onClearProfile,
+                        label = { Text(stringResource(R.string.unassigned_profile)) },
+                        modifier = Modifier.heightIn(
+                            min = ControlaPesoDesignSystem.sizes.minimumTouchTarget
+                        )
+                    )
                     state.profiles.forEach { profile ->
                         FilterChip(
                             selected = state.selectedProfileId == profile.id,
                             onClick = { onProfileChange(profile.id) },
-                            label = { Text(profile.name) }
+                            label = { Text(profile.name) },
+                            modifier = Modifier.heightIn(
+                                min = ControlaPesoDesignSystem.sizes.minimumTouchTarget
+                            )
                         )
                     }
                 }
@@ -186,6 +227,9 @@ fun LiveMeasurementScreen(
             )
         }
         item {
+            EnvironmentSummary(state)
+        }
+        item {
             MeasurementCard(state)
         }
         if (state.error != null || state.saveError != null) {
@@ -195,34 +239,57 @@ fun LiveMeasurementScreen(
                     ?: stringResource(R.string.live_error)
                 ErrorState(
                     title = stringResource(R.string.live_error),
-                    body = message
+                    body = message,
+                    actionLabel = stringResource(R.string.dismiss_error),
+                    onAction = onDismissError,
+                    actionIcon = Icons.Filled.Close
                 )
             }
         }
         item {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (state.permissionStatus != BlePermissionStatus.GRANTED) {
-                    OutlinedButton(onClick = onRequestPermissions) {
-                        Text(stringResource(R.string.request_permissions))
+            CompactActionGroup(
+                actions = buildList {
+                    if (state.permissionStatus != BlePermissionStatus.GRANTED) {
+                        add(
+                            CompactAction(
+                                label = stringResource(R.string.request_permissions),
+                                icon = Icons.Filled.PlayArrow,
+                                onClick = onRequestPermissions
+                            )
+                        )
+                    }
+                    add(
+                        CompactAction(
+                            label = stringResource(R.string.start_measurement),
+                            icon = Icons.Filled.PlayArrow,
+                            onClick = onStart,
+                            primary = true,
+                            enabled = !state.isScanning &&
+                                state.preferences.confirmedBleUnit != null &&
+                                state.bluetoothSupport == BleSupportStatus.SUPPORTED &&
+                                state.bluetoothPower == BluetoothPowerStatus.ON &&
+                                state.permissionStatus == BlePermissionStatus.GRANTED
+                        )
+                    )
+                    if (state.isScanning) {
+                        add(
+                            CompactAction(
+                                label = stringResource(R.string.cancel_measurement),
+                                icon = Icons.Filled.Info,
+                                onClick = onStop
+                            )
+                        )
                     }
                 }
-                Button(
-                    onClick = onStart,
-                    enabled = !state.isScanning &&
-                        state.profiles.isNotEmpty() &&
-                        state.bluetoothSupport == BleSupportStatus.SUPPORTED &&
-                        state.bluetoothPower == BluetoothPowerStatus.ON &&
-                        state.permissionStatus == BlePermissionStatus.GRANTED,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(stringResource(R.string.start_measurement))
-                }
-                OutlinedButton(onClick = onStop, enabled = state.isScanning) {
-                    Text(stringResource(R.string.cancel_measurement))
-                }
+            )
+        }
+        if (state.preferences.confirmedBleUnit == null) {
+            item {
+                Text(
+                    text = stringResource(R.string.start_measurement_requires_unit),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
         }
         if (state.stableEvent != null || state.savedMeasurement != null) {
@@ -238,15 +305,22 @@ fun LiveMeasurementScreen(
         }
         if (state.stableEvent != null && state.savedMeasurement == null) {
             item {
-                Button(
-                    onClick = onSave,
-                    enabled = !state.isSaving &&
-                        state.selectedProfileId != null &&
-                        state.preferences.confirmedBleUnit != null,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(stringResource(R.string.confirm_and_save))
-                }
+                CompactActionButton(
+                    CompactAction(
+                        label = stringResource(
+                            if (state.selectedProfileId == null) {
+                                R.string.save_without_profile
+                            } else {
+                                R.string.confirm_and_save
+                            }
+                        ),
+                        icon = Icons.Filled.Edit,
+                        onClick = onSave,
+                        primary = true,
+                        enabled = !state.isSaving &&
+                            state.preferences.confirmedBleUnit != null
+                    )
+                )
             }
         }
         state.savedMeasurement?.let {
@@ -261,22 +335,46 @@ fun LiveMeasurementScreen(
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (state.selectedProfileId != it.profileId) {
-                                TextButton(onClick = onUpdateSavedProfile) {
-                                    Text(stringResource(R.string.apply_profile_to_saved))
+                        CompactActionGroup(
+                            actions = buildList {
+                                if (state.selectedProfileId != it.profileId) {
+                                    add(
+                                        CompactAction(
+                                            label = stringResource(
+                                                if (state.selectedProfileId == null) {
+                                                    R.string.remove_profile_from_saved
+                                                } else {
+                                                    R.string.apply_profile_to_saved
+                                                }
+                                            ),
+                                            icon = Icons.Filled.Person,
+                                            onClick = onUpdateSavedProfile
+                                        )
+                                    )
                                 }
+                                add(
+                                    CompactAction(
+                                        label = stringResource(R.string.save_note),
+                                        icon = Icons.Filled.Edit,
+                                        onClick = onUpdateNote
+                                    )
+                                )
+                                add(
+                                    CompactAction(
+                                        label = stringResource(R.string.share),
+                                        icon = Icons.Filled.Share,
+                                        onClick = onShare
+                                    )
+                                )
+                                add(
+                                    CompactAction(
+                                        label = stringResource(R.string.delete),
+                                        icon = Icons.Filled.Delete,
+                                        onClick = onRequestDeleteSaved
+                                    )
+                                )
                             }
-                            TextButton(onClick = onUpdateNote) {
-                                Text(stringResource(R.string.save_note))
-                            }
-                            TextButton(onClick = onShare) {
-                                Text(stringResource(R.string.share))
-                            }
-                            TextButton(onClick = onRequestDeleteSaved) {
-                                Text(stringResource(R.string.delete))
-                            }
-                        }
+                        )
                     }
                 }
             }
@@ -379,7 +477,16 @@ private fun UnitConfirmation(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow
+        color = if (unit == null) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerLow
+        },
+        tonalElevation = if (unit == null) {
+            ControlaPesoDesignSystem.elevation.floating
+        } else {
+            ControlaPesoDesignSystem.elevation.resting
+        }
     ) {
         Column(
             modifier = Modifier.padding(ControlaPesoDesignSystem.spacing.md),
@@ -387,30 +494,50 @@ private fun UnitConfirmation(
                 ControlaPesoDesignSystem.spacing.xs
             )
         ) {
-            Text(
-                stringResource(R.string.ble_unit_title),
-                style = MaterialTheme.typography.titleMedium
-            )
             if (unit == null) {
-                Text(stringResource(R.string.ble_unit_unconfirmed))
-                Text(stringResource(R.string.ble_unit_compare))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    WeightUnit.entries.forEach { candidate ->
-                        OutlinedButton(onClick = { onConfirm(candidate) }) {
-                            Text(
-                                stringResource(
-                                    R.string.confirm_advertised_unit,
-                                    candidate.symbol
-                                )
-                            )
-                        }
-                    }
-                }
+                Text(
+                    stringResource(R.string.ble_unit_first_step_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Text(
+                    stringResource(R.string.ble_unit_first_step_body),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                MeasurementUnitSelector(
+                    selected = unit,
+                    onSelected = onConfirm,
+                    title = stringResource(R.string.ble_unit_select_required),
+                    description = stringResource(R.string.ble_unit_compare),
+                    unitLabels = mapOf(
+                        WeightUnit.KILOGRAM to stringResource(
+                            R.string.confirm_advertised_unit,
+                            WeightUnit.KILOGRAM.symbol
+                        ),
+                        WeightUnit.POUND to stringResource(
+                            R.string.confirm_advertised_unit,
+                            WeightUnit.POUND.symbol
+                        )
+                    ),
+                    unitDescriptions = mapOf(
+                        WeightUnit.KILOGRAM to stringResource(R.string.unit_kilogram_description),
+                        WeightUnit.POUND to stringResource(R.string.unit_pound_description)
+                    )
+                )
             } else {
+                Text(
+                    stringResource(R.string.ble_unit_title),
+                    style = MaterialTheme.typography.titleMedium
+                )
                 Text(stringResource(R.string.ble_unit_confirmed, unit.symbol))
-                TextButton(onClick = onClear) {
-                    Text(stringResource(R.string.change_unit_confirmation))
-                }
+                CompactActionButton(
+                    CompactAction(
+                        label = stringResource(R.string.change_unit_confirmation),
+                        icon = Icons.Filled.Edit,
+                        onClick = onClear
+                    )
+                )
             }
         }
     }
@@ -436,7 +563,12 @@ private fun MeasurementCard(state: BleMeasurementUiState) {
                     val suffix = state.preferences.confirmedBleUnit?.symbol
                         ?: stringResource(R.string.unit_unconfirmed_short)
                     stringResource(R.string.live_weight_value, it.advertisedValue, suffix)
-                } ?: stringResource(R.string.waiting_for_scale),
+                } ?: when (state.status) {
+                    LiveMeasurementStatus.SEARCHING -> stringResource(R.string.live_searching)
+                    LiveMeasurementStatus.WAITING_FOR_WEIGHT ->
+                        stringResource(R.string.waiting_for_scale)
+                    else -> stringResource(R.string.live_ready)
+                },
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center,
                 style = if (reading == null) {
@@ -447,30 +579,25 @@ private fun MeasurementCard(state: BleMeasurementUiState) {
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
             val progress = state.stability
-            LinearProgressIndicator(
-                progress = { progress?.fraction ?: 0f },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Text(
-                text = if (state.stableEvent != null) {
-                    stringResource(R.string.weight_stable)
-                } else {
-                    pluralStringResource(
-                        R.plurals.stability_progress,
-                        progress?.requiredReadings ?: 8,
-                        progress?.readingsCollected ?: 0,
-                        progress?.requiredReadings ?: 8
-                    )
-                }
-            )
-            reading?.let {
-                Text(
-                    stringResource(
-                        R.string.scale_signal,
-                        it.deviceName ?: stringResource(R.string.unnamed_device),
-                        signalText(it.rssi)
-                    )
+            if (state.isScanning || progress != null || state.stableEvent != null) {
+                LinearProgressIndicator(
+                    progress = { progress?.fraction ?: 0f },
+                    modifier = Modifier.fillMaxWidth()
                 )
+                Text(
+                    text = if (state.stableEvent != null) {
+                        stringResource(R.string.weight_stable)
+                    } else {
+                        pluralStringResource(
+                            R.plurals.stability_progress,
+                            progress?.requiredReadings ?: 8,
+                            progress?.readingsCollected ?: 0,
+                            progress?.requiredReadings ?: 8
+                        )
+                    }
+                )
+            } else {
+                Text(stringResource(R.string.live_idle_body))
             }
         }
     }
@@ -489,15 +616,6 @@ private fun liveStatusText(status: LiveMeasurementStatus): String = stringResour
         LiveMeasurementStatus.SAVING -> R.string.saving
         LiveMeasurementStatus.SAVED -> R.string.measurement_saved
         LiveMeasurementStatus.ERROR -> R.string.live_error
-    }
-)
-
-@Composable
-private fun signalText(rssi: Int): String = stringResource(
-    when {
-        rssi >= -60 -> R.string.signal_strong
-        rssi >= -75 -> R.string.signal_medium
-        else -> R.string.signal_weak
     }
 )
 

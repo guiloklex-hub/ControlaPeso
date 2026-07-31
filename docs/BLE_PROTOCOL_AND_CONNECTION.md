@@ -71,8 +71,9 @@ da loja.
 | Android 11 ou anterior | `BLUETOOTH`, `BLUETOOTH_ADMIN` e `ACCESS_FINE_LOCATION`, todos limitados a API 30 no Manifest |
 | Android 12 ou superior | `BLUETOOTH_SCAN` e `BLUETOOTH_CONNECT` |
 
-Não são declarados `BLUETOOTH_ADVERTISE`, internet ou localização em Android
-12+.
+Não são declarados `BLUETOOTH_ADVERTISE` nem localização em Android 12+.
+`INTERNET` existe apenas para a consulta opcional de atualização; o scanner BLE
+e o backup local não fazem tráfego de rede.
 
 ### Decisão sobre `neverForLocation`
 

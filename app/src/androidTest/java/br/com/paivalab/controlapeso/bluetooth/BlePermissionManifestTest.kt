@@ -18,7 +18,8 @@ class BlePermissionManifestTest {
         )
         val requested = packageInfo.requestedPermissions.orEmpty().toSet()
 
-        assertFalse(Manifest.permission.INTERNET in requested)
+        assertTrue(Manifest.permission.INTERNET in requested)
+        assertTrue(Manifest.permission.REQUEST_INSTALL_PACKAGES in requested)
         assertTrue(Manifest.permission.BLUETOOTH_SCAN in requested)
         assertTrue(Manifest.permission.BLUETOOTH_CONNECT in requested)
 

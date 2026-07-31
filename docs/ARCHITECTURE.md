@@ -7,7 +7,8 @@ armazenamento local. As fronteiras importantes são:
 
 ```text
 MainActivity
-  ├── Activity Result APIs: BLE, notificações, Health Connect e SAF
+  ├── Activity Result APIs: BLE, notificações, Health Connect, SAF,
+  │   Sharesheet e instalação de APK
   └── ControlaPesoApp
         ├── onboarding
         └── ControlaPesoNavHost
@@ -16,13 +17,16 @@ MainActivity
                     ├── casos de uso
                     ├── repositories
                     ├── Room / DataStore
-                    ├── exportadores
+                    ├── exportadores / backup local / Sharesheet
+                    ├── release GitHub / verificador de APK
                     └── BleMeasurementSource
                            └── BleScanner + parsers
 ```
 
-Não há Hilt/Koin, backend, SDK proprietário, serviço BLE, scan contínuo,
-conexão GATT ou permissão de Internet.
+Não há Hilt/Koin, backend próprio, serviço BLE, scan contínuo ou conexão GATT.
+A permissão de Internet é usada somente pela consulta de release público; o
+backup local e o Sharesheet não fazem autenticação remota. Não há analytics ou
+telemetria.
 
 ## Composição e processo
 
@@ -33,13 +37,14 @@ conexão GATT ou permissão de Internet.
 - preferência global que autoriza logs BLE detalhados em debug.
 
 `AppContainer` mantém somente `applicationContext` e expõe banco,
-repositories, preferências, fonte BLE, exportadores, Health Connect e
-agendador. Dependências com API mínima maior, como Health Connect, são
-carregadas tardiamente.
+repositories, preferências, fonte BLE, exportadores, Health Connect, serviço de
+backup local e clientes injetáveis de release. Dependências com API mínima maior,
+como Health Connect, são carregadas tardiamente.
 
 `MainActivity` hospeda Compose, solicita permissões com Activity Result API,
-compartilha `content://` e encaminha o destino de notificações. Ela não
-interpreta bytes e não controla o scan.
+compartilha `content://`, inicia sessões
+`PackageInstaller` e encaminha o destino de notificações. Ela não interpreta
+bytes BLE e não controla o scan.
 
 ## Camadas
 
@@ -71,24 +76,27 @@ Os modelos não dependem de Room ou Compose:
 - `MeasurementSource`.
 
 Casos de uso validam entrada manual, salvamento BLE, duplicidade, perfil,
-estatísticas, IMC e metas. Peso persistido é sempre canônico em kg.
+estatísticas e metas. Métricas corporais derivadas permanecem isoladas até
+política explícita de produto e validação. Peso persistido é sempre canônico
+em kg.
 
 ### Dados
 
-Room schema v1 contém:
+Room schema v2 contém:
 
 ```text
-Profile 1 ── * WeightMeasurement * ── 0..1 ScaleDevice
-    │                    (SET_NULL ao esquecer balança)
-    └── 1 ── * WeightGoal
-          (CASCADE ao excluir perfil)
+Profile 1 ── 0..* WeightMeasurement * ── 0..1 ScaleDevice
+    │        (SET_NULL ao excluir perfil ou esquecer balança)
+    └── 1 ── * WeightGoal (CASCADE ao excluir perfil)
 ```
 
 DAOs expõem `Flow`, consultas por intervalo e transações para perfil e meta
 ativos. Não existe `fallbackToDestructiveMigration`.
 
 DataStore guarda onboarding, tema, unidade padrão, opções de medição,
-histórico, acessibilidade, logs debug, confirmação de unidade e lembretes.
+histórico, acessibilidade, logs debug, confirmação de unidade, lembretes e a
+frequência/último backup local. Também pode guardar o ETag e a resposta pública
+validada de release do GitHub.
 Datas de medição são exibidas com o `zoneOffsetSeconds` gravado junto ao
 registro, inclusive após mudança do fuso atual do telefone. Apenas dados
 legados com offset inválido usam o fuso do aparelho como fallback.
@@ -155,6 +163,18 @@ preservam identidade em backup. No Health Connect, o UUID vira
 - `FileProvider` expõe somente esse subdiretório;
 - o SAF grava a cópia no destino escolhido pelo usuário;
 - WorkManager remove temporários antigos.
+
+### Atualização e backup local
+
+`ReleaseUpdateRepository` chama o endpoint GitHub com `HttpsURLConnection`,
+ETag e parser SemVer. Antes de uma sessão `PackageInstaller`, o APK universal
+é conferido contra `SHA256SUMS.txt`, package, assinatura e `versionCode`.
+
+`LocalBackupService` cria o JSON mais recente no armazenamento privado e
+`LocalBackupWorker` o atualiza conforme a frequência escolhida. O compartilhamento
+usa `ShareFileService`/`FileProvider` e o Sharesheet Android; nenhum token ou
+cliente remoto é mantido pelo aplicativo. `ReportsViewModel` continua fazendo
+prévia, validação e restauração transacional.
 
 ## Health Connect
 

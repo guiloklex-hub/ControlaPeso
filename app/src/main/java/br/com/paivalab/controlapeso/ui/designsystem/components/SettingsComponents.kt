@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -14,6 +15,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
 
 @Composable
@@ -63,6 +67,14 @@ fun SettingsItem(
         modifier = modifier
             .fillMaxWidth()
             .then(clickableModifier)
+            .heightIn(min = ControlaPesoDesignSystem.sizes.minimumTouchTarget)
+            .then(
+                if (onClick != null) {
+                    Modifier.semantics { role = Role.Button }
+                } else {
+                    Modifier
+                }
+            )
             .padding(
                 horizontal = ControlaPesoDesignSystem.spacing.md,
                 vertical = ControlaPesoDesignSystem.spacing.sm

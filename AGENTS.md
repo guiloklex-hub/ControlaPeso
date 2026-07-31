@@ -16,5 +16,8 @@
 - Manter layouts adaptáveis e acessíveis, incluindo fontes ampliadas.
 - Não usar fallback destrutivo em migrations do Room.
 - Não incluir o modo de demonstração em builds release.
+- Manter backups locais; qualquer compartilhamento externo deve usar o Sharesheet
+  Android e não adicionar OAuth, backend ou integração direta de nuvem sem nova
+  decisão explícita.
 - Executar `./gradlew test`, `./gradlew lint` e `./gradlew assembleDebug` antes de finalizar.
 - Informar todos os arquivos modificados na entrega.

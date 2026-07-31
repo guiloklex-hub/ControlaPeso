@@ -36,7 +36,9 @@ manualmente.
 - Não invente unidade, estabilidade, UUID, métrica corporal ou regra de
   conversão.
 - Não conecte nem escreva em GATT por suposição.
-- Não adicione rede, analytics, backend, SDK proprietário ou telemetria.
+- Não adicione novas integrações de rede, analytics, backend ou telemetria sem
+  proposta e justificativa. GitHub Releases é a única consulta de rede do app;
+  backups permanecem locais e compartilhamentos usam o Sharesheet.
 - Não envie endereço BLE, payload, nome de perfil ou notas para Health Connect.
 
 Se você quiser contribuir com uma nova balança, abra uma issue com modelo,

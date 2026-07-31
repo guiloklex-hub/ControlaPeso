@@ -12,7 +12,8 @@ de manutenção são, nesta ordem:
 5. evolução visual e recursos adicionais.
 
 Nenhuma contribuição deve trocar dados pessoais por conveniência de produto.
-Não há coleta remota, conta, anúncios, telemetria ou backend planejados.
+Não há coleta remota, anúncios, telemetria ou backend planejados. Backups são
+locais e qualquer envio externo ocorre somente por ação no Sharesheet Android.
 
 ## Manutenção
 

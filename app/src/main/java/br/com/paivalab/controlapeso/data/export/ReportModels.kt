@@ -20,7 +20,8 @@ data class ReportOptions(
     val includeChart: Boolean = true,
     val includeTable: Boolean = true,
     val includeNotes: Boolean = true,
-    val includeAdditionalMetrics: Boolean = true,
+    /** Kept for file/API compatibility; unvalidated body metrics are excluded. */
+    val includeAdditionalMetrics: Boolean = false,
     val unit: WeightUnit = WeightUnit.KILOGRAM
 )
 

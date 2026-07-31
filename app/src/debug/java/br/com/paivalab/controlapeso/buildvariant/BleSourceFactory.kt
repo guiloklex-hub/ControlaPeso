@@ -1,4 +1,4 @@
-package br.com.paivalab.controlapeso.demo
+package br.com.paivalab.controlapeso.buildvariant
 
 import android.content.Context
 import br.com.paivalab.controlapeso.bluetooth.BleDeviceResult
@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-object DemoBleSourceFactory {
+object BleSourceFactory {
     const val isAvailable: Boolean = true
 
     fun create(context: Context): BleMeasurementSource = DemoBleMeasurementSource()

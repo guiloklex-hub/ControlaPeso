@@ -2,7 +2,9 @@ package br.com.paivalab.controlapeso.ui.navigation
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.Intent
 import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -42,13 +44,16 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import androidx.health.connect.client.HealthConnectClient
 import br.com.paivalab.controlapeso.R
 import br.com.paivalab.controlapeso.app.AppContainer
 import br.com.paivalab.controlapeso.core.time.MeasurementTimeFormatter
-import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.domain.model.MeasurementSource
-import br.com.paivalab.controlapeso.demo.DemoBleSourceFactory
+import br.com.paivalab.controlapeso.domain.model.Profile
+import br.com.paivalab.controlapeso.domain.model.WeightUnit
+import br.com.paivalab.controlapeso.buildvariant.BleSourceFactory
 import br.com.paivalab.controlapeso.data.export.SharedReportFile
+import br.com.paivalab.controlapeso.ui.dashboard.DashboardEnvironmentState
 import br.com.paivalab.controlapeso.ui.dashboard.DashboardScreen
 import br.com.paivalab.controlapeso.ui.dashboard.DashboardViewModel
 import br.com.paivalab.controlapeso.ui.about.AboutScreen
@@ -72,32 +77,41 @@ import br.com.paivalab.controlapeso.ui.privacy.PrivacyScreen
 import br.com.paivalab.controlapeso.ui.privacy.PrivacyViewModel
 import br.com.paivalab.controlapeso.ui.reports.ReportsScreen
 import br.com.paivalab.controlapeso.ui.reports.ReportsViewModel
+import br.com.paivalab.controlapeso.ui.reports.DataBackupScreen
+import br.com.paivalab.controlapeso.ui.reports.LocalBackupViewModel
 import br.com.paivalab.controlapeso.ui.settings.SettingsScreen
 import br.com.paivalab.controlapeso.ui.settings.SettingsViewModel
+import br.com.paivalab.controlapeso.ui.update.ReleaseUpdateUiState
 import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
 import br.com.paivalab.controlapeso.ui.designsystem.components.AdaptiveContentPane
 import br.com.paivalab.controlapeso.ui.designsystem.components.AppBackground
 import br.com.paivalab.controlapeso.ui.designsystem.components.PrimaryActionCard
+import br.com.paivalab.controlapeso.ui.designsystem.components.ProfileContextHeader
 import br.com.paivalab.controlapeso.ui.designsystem.components.SecondaryActionCard
 import br.com.paivalab.controlapeso.ui.designsystem.tokens.ControlaPesoWindowSize
 import br.com.paivalab.controlapeso.ui.designsystem.tokens.controlaPesoWindowSize
-import java.time.format.FormatStyle
 
 @Composable
 fun ControlaPesoNavHost(
     container: AppContainer,
     scannerViewModel: ScannerViewModel,
+    activeProfile: Profile? = null,
     onRequestBlePermissions: () -> Unit,
     onShareText: (String) -> Unit,
     onCopyText: (String) -> Unit,
     onShareFile: (SharedReportFile) -> Unit,
+    updateState: ReleaseUpdateUiState = ReleaseUpdateUiState(),
+    onCheckForUpdates: () -> Unit = {},
+    onViewReleaseNotes: () -> Unit = {},
     modifier: Modifier = Modifier,
     requestedDestination: String? = null,
     onDestinationConsumed: () -> Unit = {}
 ) {
     val navController = rememberNavController()
+    val context = LocalContext.current
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    val scannerState by scannerViewModel.uiState.collectAsStateWithLifecycle()
     val usesCompactNavigationLabels = LocalDensity.current.fontScale >= 1.5f
     val navigateToPrimaryDestination: (AppDestination) -> Unit = { destination ->
         navController.navigate(destination.route) {
@@ -204,6 +218,7 @@ fun ControlaPesoNavHost(
                             onManual = {
                                 navController.navigate(AppDestination.ManualMeasurement.route)
                             },
+                            onRetry = dashboardViewModel::retry,
                             onHistory = {
                                 navController.navigate(AppDestination.History.route)
                             },
@@ -212,7 +227,26 @@ fun ControlaPesoNavHost(
                             },
                             onGoals = {
                                 navController.navigate(AppDestination.Goals.route)
-                            }
+                            },
+                            onReports = {
+                                navController.navigate(AppDestination.Reports.route)
+                            },
+                            onOpenSettings = {
+                                navController.navigate(AppDestination.Settings.route)
+                            },
+                            onOpenDataBackup = {
+                                navController.navigate(AppDestination.DataBackup.route)
+                            },
+                            onOpenAbout = {
+                                navController.navigate(AppDestination.About.route)
+                            },
+                            environment = DashboardEnvironmentState(
+                                bluetoothSupport = scannerState.bluetoothSupport,
+                                bluetoothPower = scannerState.bluetoothPower,
+                                bluetoothPermission = scannerState.permissionStatus,
+                                updateStatus = updateState.checkStatus,
+                                updateVersion = updateState.release?.version?.toString()
+                            )
                         )
                     }
                     composable(AppDestination.History.route) {
@@ -226,6 +260,12 @@ fun ControlaPesoNavHost(
                             onCustomStartChange = historyViewModel::setCustomStart,
                             onCustomEndChange = historyViewModel::setCustomEnd,
                             onToggleSource = historyViewModel::toggleSource,
+                            onToggleUnassigned = historyViewModel::toggleUnassignedSelection,
+                            onAssignmentProfileChange = historyViewModel::setAssignmentProfile,
+                            onAssignSelected = historyViewModel::assignSelectedToProfile,
+                            onResetFilters = historyViewModel::resetFilters,
+                            onDismissAssignmentError = historyViewModel::dismissAssignmentError,
+                            onRetry = historyViewModel::retry,
                             onMeasurementClick = { id ->
                                 navController.navigate(
                                     AppDestination.MeasurementDetail.route(id)
@@ -235,14 +275,18 @@ fun ControlaPesoNavHost(
                     }
                     composable(AppDestination.Measure.route) {
                         MeasureMenu(
+                            activeProfile = activeProfile,
+                            activeProfilePhotoPath = activeProfile?.let {
+                                container.profilePhotoStore.pathFor(it.id)
+                            },
                             onLive = {
                                 navController.navigate(AppDestination.LiveMeasurement.route)
                             },
                             onManual = {
                                 navController.navigate(AppDestination.ManualMeasurement.route)
                             },
-                            onDiagnostic = {
-                                navController.navigate(AppDestination.Diagnostic.route)
+                            onProfiles = {
+                                navController.navigate(AppDestination.Profiles.route)
                             }
                         )
                     }
@@ -258,11 +302,6 @@ fun ControlaPesoNavHost(
                         ) { uri ->
                             uri?.let(reportsViewModel::saveGeneratedTo)
                         }
-                        val openDocument = rememberLauncherForActivityResult(
-                            ActivityResultContracts.OpenDocument()
-                        ) { uri ->
-                            uri?.let(reportsViewModel::importFrom)
-                        }
                         ReportsScreen(
                             state = state,
                             onProfileChange = reportsViewModel::setProfile,
@@ -273,9 +312,6 @@ fun ControlaPesoNavHost(
                             onIncludeChartChange = reportsViewModel::setIncludeChart,
                             onIncludeTableChange = reportsViewModel::setIncludeTable,
                             onIncludeNotesChange = reportsViewModel::setIncludeNotes,
-                            onIncludeMetricsChange =
-                                reportsViewModel::setIncludeAdditionalMetrics,
-                            onUnitChange = reportsViewModel::setUnit,
                             onGenerate = reportsViewModel::generate,
                             onShare = {
                                 state.generatedFile?.let(onShareFile)
@@ -288,6 +324,41 @@ fun ControlaPesoNavHost(
                                     createDocument.launch(file.displayName)
                                 }
                             },
+                            onOpenDataBackup = {
+                                navController.navigate(AppDestination.DataBackup.route)
+                            },
+                            onOpenSettings = {
+                                navController.navigate(AppDestination.Settings.route)
+                            },
+                            onDismissMessage = reportsViewModel::dismissMessage
+                        )
+                    }
+                    composable(AppDestination.DataBackup.route) {
+                        val reportsViewModel: ReportsViewModel = viewModel(
+                            factory = ReportsViewModel.Factory(container)
+                        )
+                        val state by reportsViewModel.uiState.collectAsStateWithLifecycle()
+                        val localBackupViewModel: LocalBackupViewModel = viewModel(
+                            factory = LocalBackupViewModel.Factory(container)
+                        )
+                        val localBackupState by localBackupViewModel.uiState
+                            .collectAsStateWithLifecycle()
+                        LaunchedEffect(localBackupState.sharedFile) {
+                            localBackupState.sharedFile?.let { file ->
+                                onShareFile(file)
+                                localBackupViewModel.consumeSharedFile()
+                            }
+                        }
+                        val openDocument = rememberLauncherForActivityResult(
+                            ActivityResultContracts.OpenDocument()
+                        ) { uri -> uri?.let(reportsViewModel::importFrom) }
+                        DataBackupScreen(
+                            state = state,
+                            localBackupState = localBackupState,
+                            onLocalBackupFrequencyChange = localBackupViewModel::setFrequency,
+                            onCreateLocalBackup = localBackupViewModel::createNow,
+                            onShareLatestBackup = localBackupViewModel::shareLatest,
+                            onDismissLocalFeedback = localBackupViewModel::dismissFeedback,
                             onImport = {
                                 openDocument.launch(
                                     arrayOf(
@@ -297,8 +368,7 @@ fun ControlaPesoNavHost(
                                     )
                                 )
                             },
-                            onClearTemporaryFiles =
-                                reportsViewModel::clearTemporaryFiles,
+                            onClearTemporaryFiles = reportsViewModel::clearTemporaryFiles,
                             onDismissImport = reportsViewModel::dismissImportPreview,
                             onRestore = reportsViewModel::restore,
                             onDismissMessage = reportsViewModel::dismissMessage
@@ -380,12 +450,22 @@ fun ControlaPesoNavHost(
                                     container.healthConnectWeightWriter.requiredPermissions
                                 )
                             },
+                            onManageHealthPermissions = {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS)
+                                    )
+                                }
+                            },
                             onHealthEnabledChange =
                                 settingsViewModel::setHealthConnectEnabled,
-                            onHealthSync = settingsViewModel::syncActiveProfile,
+                            onHealthSync = settingsViewModel::requestHealthSync,
+                            onConfirmHealthSync = settingsViewModel::confirmHealthSync,
+                            onDismissHealthSync =
+                                settingsViewModel::dismissHealthSyncConfirmation,
                             diagnosticLoggingAvailable =
                                 br.com.paivalab.controlapeso.BuildConfig.DEBUG,
-                            demoAvailable = DemoBleSourceFactory.isAvailable,
+                            demoAvailable = BleSourceFactory.isAvailable,
                             onOpenDemoMeasurement = {
                                 navController.navigate(
                                     AppDestination.DemoMeasurement.route
@@ -406,17 +486,27 @@ fun ControlaPesoNavHost(
                             onReports = {
                                 navController.navigate(AppDestination.Reports.route)
                             },
+                            onDataBackup = {
+                                navController.navigate(AppDestination.DataBackup.route)
+                            },
                             onPrivacy = {
                                 navController.navigate(AppDestination.Privacy.route)
                             },
-                            onAbout = { navController.navigate(AppDestination.About.route) }
+                            onAbout = { navController.navigate(AppDestination.About.route) },
+                            onReviewOnboarding = settingsViewModel::reviewOnboarding
                         )
                     }
                     composable(AppDestination.Diagnostic.route) {
-                        val scannerState by scannerViewModel.uiState.collectAsStateWithLifecycle()
                         ScannerScreen(
                             uiState = scannerState,
                             onRequestPermissions = onRequestBlePermissions,
+                            onOpenBluetoothSettings = {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
+                                    )
+                                }
+                            },
                             onStartScan = scannerViewModel::startScan,
                             onStopScan = scannerViewModel::stopScan,
                             onClearResults = scannerViewModel::clearResults,
@@ -430,6 +520,9 @@ fun ControlaPesoNavHost(
                             factory = ProfilesViewModel.Factory(container)
                         )
                         val state by profilesViewModel.uiState.collectAsStateWithLifecycle()
+                        val profilePhotoPicker = rememberLauncherForActivityResult(
+                            ActivityResultContracts.OpenDocument()
+                        ) { uri -> uri?.let(profilesViewModel::setPhoto) }
                         ProfilesScreen(
                             state = state,
                             onCreate = profilesViewModel::startCreate,
@@ -442,11 +535,18 @@ fun ControlaPesoNavHost(
                             onHeightChange = profilesViewModel::setHeight,
                             onBirthDateChange = profilesViewModel::setBirthDate,
                             onUnitChange = profilesViewModel::setUnit,
+                            onPickPhoto = {
+                                profilePhotoPicker.launch(arrayOf("image/*"))
+                            },
+                            onRemovePhoto = profilesViewModel::removePhoto,
                             onSave = profilesViewModel::save,
                             onDismissDelete = profilesViewModel::dismissDelete,
                             onConfirmDelete = profilesViewModel::confirmDelete,
                             onExportBeforeDelete = {
                                 navController.navigate(AppDestination.Reports.route)
+                            },
+                            onOpenHistory = {
+                                navController.navigate(AppDestination.History.route)
                             }
                         )
                     }
@@ -467,7 +567,10 @@ fun ControlaPesoNavHost(
                             onDateChange = goalsViewModel::setTargetDate,
                             onSave = goalsViewModel::save,
                             onDismissDelete = goalsViewModel::dismissDelete,
-                            onConfirmDelete = goalsViewModel::confirmDelete
+                            onConfirmDelete = goalsViewModel::confirmDelete,
+                            onSwitchProfile = {
+                                navController.navigate(AppDestination.Profiles.route)
+                            }
                         )
                     }
                     composable(AppDestination.LiveMeasurement.route) {
@@ -486,10 +589,7 @@ fun ControlaPesoNavHost(
                                 R.string.share_measurement_template,
                                 unit.fromKilograms(saved.weightKg),
                                 unit.symbol,
-                                MeasurementTimeFormatter.dateTime(
-                                    saved,
-                                    dateStyle = FormatStyle.SHORT
-                                )
+                                MeasurementTimeFormatter.dateTime(saved)
                             )
                         } else {
                             ""
@@ -500,6 +600,7 @@ fun ControlaPesoNavHost(
                             onStart = liveViewModel::startScan,
                             onStop = liveViewModel::stopScan,
                             onProfileChange = liveViewModel::setProfile,
+                            onClearProfile = liveViewModel::clearProfile,
                             onConfirmUnit = liveViewModel::confirmAdvertisedUnit,
                             onClearUnit = liveViewModel::clearConfirmedUnit,
                             onNoteChange = liveViewModel::setNote,
@@ -516,16 +617,20 @@ fun ControlaPesoNavHost(
                             onConfirmDeleteSaved =
                                 liveViewModel::confirmDeleteSaved,
                             onUndoDeleteSaved = liveViewModel::undoDeleteSaved,
-                            onConsumeDeletedMeasurement =
-                                liveViewModel::consumeDeletedMeasurement,
-                            onShare = { if (shareText.isNotEmpty()) onShareText(shareText) }
+                                onConsumeDeletedMeasurement =
+                                    liveViewModel::consumeDeletedMeasurement,
+                                onShare = { if (shareText.isNotEmpty()) onShareText(shareText) },
+                                onDismissError = liveViewModel::dismissError,
+                                onSwitchProfile = {
+                                    navController.navigate(AppDestination.Profiles.route)
+                                }
                         )
                     }
-                    if (DemoBleSourceFactory.isAvailable) {
+                    if (BleSourceFactory.isAvailable) {
                         composable(AppDestination.DemoMeasurement.route) {
                             val context = LocalContext.current
                             val demoSource = androidx.compose.runtime.remember {
-                                DemoBleSourceFactory.create(context)
+                                BleSourceFactory.create(context)
                             }
                             val demoViewModel: BleMeasurementViewModel = viewModel(
                                 factory = BleMeasurementViewModel.Factory(
@@ -542,6 +647,7 @@ fun ControlaPesoNavHost(
                                 onStart = demoViewModel::startScan,
                                 onStop = demoViewModel::stopScan,
                                 onProfileChange = demoViewModel::setProfile,
+                                onClearProfile = demoViewModel::clearProfile,
                                 onConfirmUnit = demoViewModel::confirmAdvertisedUnit,
                                 onClearUnit = demoViewModel::clearConfirmedUnit,
                                 onNoteChange = demoViewModel::setNote,
@@ -561,6 +667,7 @@ fun ControlaPesoNavHost(
                                 onConsumeDeletedMeasurement =
                                     demoViewModel::consumeDeletedMeasurement,
                                 onShare = {},
+                                onDismissError = demoViewModel::dismissError,
                                 demoMode = true
                             )
                         }
@@ -574,6 +681,7 @@ fun ControlaPesoNavHost(
                             state = state,
                             editing = false,
                             onProfileChange = manualViewModel::setProfile,
+                            onClearProfile = manualViewModel::clearProfile,
                             onWeightChange = manualViewModel::setWeight,
                             onUnitChange = manualViewModel::setUnit,
                             onDateChange = manualViewModel::setDate,
@@ -587,7 +695,10 @@ fun ControlaPesoNavHost(
                                     AppDestination.MeasurementDetail.route(id)
                                 )
                             },
-                            onConsumeSaved = manualViewModel::consumeSaved
+                            onConsumeSaved = manualViewModel::consumeSaved,
+                            onSwitchProfile = {
+                                navController.navigate(AppDestination.Profiles.route)
+                            }
                         )
                     }
                     composable(
@@ -605,6 +716,7 @@ fun ControlaPesoNavHost(
                             state = state,
                             editing = true,
                             onProfileChange = manualViewModel::setProfile,
+                            onClearProfile = manualViewModel::clearProfile,
                             onWeightChange = manualViewModel::setWeight,
                             onUnitChange = manualViewModel::setUnit,
                             onDateChange = manualViewModel::setDate,
@@ -614,7 +726,10 @@ fun ControlaPesoNavHost(
                             onDismissDuplicate = manualViewModel::dismissDuplicate,
                             onConfirmDuplicate = manualViewModel::confirmDuplicate,
                             onSaved = { navController.popBackStack() },
-                            onConsumeSaved = manualViewModel::consumeSaved
+                            onConsumeSaved = manualViewModel::consumeSaved,
+                            onSwitchProfile = {
+                                navController.navigate(AppDestination.Profiles.route)
+                            }
                         )
                     }
                     composable(
@@ -629,17 +744,13 @@ fun ControlaPesoNavHost(
                         )
                         val state by detailViewModel.uiState.collectAsStateWithLifecycle()
                         val measurement = state.measurement
-                        val unit = state.profile?.preferredWeightUnit
-                            ?: WeightUnit.KILOGRAM
+                        val unit = state.unit
                         val shareText = if (measurement != null) {
                             stringResource(
                                 R.string.share_measurement_template,
                                 unit.fromKilograms(measurement.weightKg),
                                 unit.symbol,
-                                MeasurementTimeFormatter.dateTime(
-                                    measurement,
-                                    dateStyle = FormatStyle.SHORT
-                                )
+                                MeasurementTimeFormatter.dateTime(measurement)
                             )
                         } else {
                             ""
@@ -656,7 +767,11 @@ fun ControlaPesoNavHost(
                             onConfirmDelete = detailViewModel::confirmDelete,
                             onUndoDelete = detailViewModel::undoDelete,
                             onConsumeDeleteNotice = detailViewModel::consumeDeleteNotice,
-                            onShare = { if (shareText.isNotEmpty()) onShareText(shareText) }
+                            onShare = { if (shareText.isNotEmpty()) onShareText(shareText) },
+                            onRequestAssignProfile = detailViewModel::requestAssignProfile,
+                            onDismissAssignProfile = detailViewModel::dismissAssignProfile,
+                            onAssignProfile = detailViewModel::assignProfile,
+                            onNavigateBack = { navController.popBackStack() }
                         )
                     }
                     composable(AppDestination.Devices.route) {
@@ -673,9 +788,7 @@ fun ControlaPesoNavHost(
                             onMeasure = {
                                 navController.navigate(AppDestination.LiveMeasurement.route)
                             },
-                            onDiagnostic = {
-                                navController.navigate(AppDestination.Diagnostic.route)
-                            }
+                            onRetry = devicesViewModel::retry
                         )
                     }
                     composable(AppDestination.Privacy.route) {
@@ -683,10 +796,17 @@ fun ControlaPesoNavHost(
                             factory = PrivacyViewModel.Factory(container)
                         )
                         val state by privacyViewModel.uiState.collectAsStateWithLifecycle()
+                        LifecycleResumeEffect(Unit) {
+                            privacyViewModel.refreshHealthConnect()
+                            onPauseOrDispose { }
+                        }
                         PrivacyScreen(
                             state = state,
                             onExport = {
                                 navController.navigate(AppDestination.Reports.route)
+                            },
+                            onDataBackup = {
+                                navController.navigate(AppDestination.DataBackup.route)
                             },
                             onClearTemporaryFiles =
                                 privacyViewModel::clearTemporaryFiles,
@@ -697,11 +817,16 @@ fun ControlaPesoNavHost(
                             onContinueDelete = privacyViewModel::continueDelete,
                             onConfirmationTextChange =
                                 privacyViewModel::setConfirmationText,
-                            onConfirmDelete = privacyViewModel::confirmDelete
+                            onConfirmDelete = privacyViewModel::confirmDelete,
+                            onDismissError = privacyViewModel::dismissError
                         )
                     }
                     composable(AppDestination.About.route) {
-                        AboutScreen()
+                        AboutScreen(
+                            updateState = updateState,
+                            onCheckForUpdates = onCheckForUpdates,
+                            onViewReleaseNotes = onViewReleaseNotes
+                        )
                     }
                 }
             }
@@ -711,9 +836,11 @@ fun ControlaPesoNavHost(
 
 @Composable
 private fun MeasureMenu(
+    activeProfile: Profile?,
+    activeProfilePhotoPath: String?,
     onLive: () -> Unit,
     onManual: () -> Unit,
-    onDiagnostic: () -> Unit
+    onProfiles: () -> Unit
 ) {
     AppBackground {
         AdaptiveContentPane {
@@ -725,6 +852,17 @@ private fun MeasureMenu(
                     ControlaPesoDesignSystem.spacing.md
                 )
             ) {
+                ProfileContextHeader(
+                    name = activeProfile?.name,
+                    unitSymbol = activeProfile?.preferredWeightUnit?.symbol
+                        ?: WeightUnit.KILOGRAM.symbol,
+                    noProfileLabel = stringResource(R.string.dashboard_no_profile_label),
+                    unitLabel = stringResource(R.string.dashboard_unit_label),
+                    switchLabel = stringResource(R.string.switch_profile),
+                    onSwitchProfile = onProfiles,
+                    photoPath = activeProfilePhotoPath,
+                    avatarKey = activeProfile?.avatarKey
+                )
                 Text(
                     stringResource(R.string.measure_title),
                     style = MaterialTheme.typography.headlineLarge
@@ -744,9 +882,6 @@ private fun MeasureMenu(
                     body = stringResource(R.string.add_manual_weight_body),
                     onClick = onManual
                 )
-                OutlinedButton(onClick = onDiagnostic) {
-                    Text(stringResource(R.string.open_diagnostic))
-                }
             }
         }
     }

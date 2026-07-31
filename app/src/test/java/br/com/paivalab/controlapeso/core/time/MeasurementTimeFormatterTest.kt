@@ -4,8 +4,6 @@ import br.com.paivalab.controlapeso.domain.model.MeasurementSource
 import br.com.paivalab.controlapeso.domain.model.WeightMeasurement
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.FormatStyle
-import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -18,14 +16,11 @@ class MeasurementTimeFormatterTest {
         )
 
         assertEquals(
-            "7/27/26, 10:30 PM",
+            "27/07/2026 · 22:30",
             MeasurementTimeFormatter.dateTime(
                 measurement = measurement,
-                dateStyle = FormatStyle.SHORT,
-                timeStyle = FormatStyle.SHORT,
-                locale = Locale.US,
                 fallbackZone = ZoneId.of("Asia/Tokyo")
-            ).replace('\u202F', ' ')
+            )
         )
         assertEquals(
             java.time.LocalDate.of(2026, 7, 27),
@@ -47,6 +42,22 @@ class MeasurementTimeFormatterTest {
             java.time.LocalDate.of(2026, 7, 28),
             MeasurementTimeFormatter.localDate(
                 measurement,
+                fallbackZone = ZoneId.of("UTC")
+            )
+        )
+    }
+
+    @Test
+    fun date_usesTheSameVisibleDayMonthYearContract() {
+        val measurement = measurement(
+            instant = Instant.parse("2026-07-28T01:30:00Z"),
+            zoneOffsetSeconds = -10_800
+        )
+
+        assertEquals(
+            "27/07/2026",
+            MeasurementTimeFormatter.date(
+                measurement = measurement,
                 fallbackZone = ZoneId.of("UTC")
             )
         )

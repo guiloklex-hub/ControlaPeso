@@ -15,9 +15,11 @@ import br.com.paivalab.controlapeso.domain.repository.ProfileRepository
 import java.time.LocalDate
 import java.time.DateTimeException
 import java.time.ZoneId
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -52,6 +54,26 @@ class OnboardingViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(OnboardingUiState())
     val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
+    private var existingActiveProfile: Profile? = null
+
+    init {
+        viewModelScope.launch {
+            val profile = profileRepository.observeActive().first()
+            existingActiveProfile = profile
+            if (profile != null) {
+                _uiState.update {
+                    it.copy(
+                        profileName = profile.name,
+                        heightText = profile.heightCm?.toString().orEmpty(),
+                        birthDateText = profile.birthDate
+                            ?.let(BrazilianDateFormatter::inputDigits)
+                            .orEmpty(),
+                        unit = profile.preferredWeightUnit
+                    )
+                }
+            }
+        }
+    }
 
     fun next() = _uiState.update {
         it.copy(step = (it.step + 1).coerceAtMost(it.totalSteps - 1), error = null)
@@ -72,8 +94,13 @@ class OnboardingViewModel(
                 error = null
             )
         }
-    fun setUnit(value: WeightUnit) =
-        _uiState.update { it.copy(unit = value, error = null) }
+    fun setUnit(value: WeightUnit) = _uiState.update { state ->
+        state.copy(
+            unit = value,
+            targetWeightText = value.convertInput(state.targetWeightText, state.unit),
+            error = null
+        )
+    }
     fun setTargetWeight(value: String) =
         _uiState.update { it.copy(targetWeightText = value, error = null) }
     fun setTheme(value: ThemeMode) =
@@ -119,29 +146,41 @@ class OnboardingViewModel(
         _uiState.update { it.copy(isSaving = true, error = null) }
 
         viewModelScope.launch {
-            runCatching {
+            val existing = existingActiveProfile ?: profileRepository.observeActive().first()
+            existingActiveProfile = existing
+            try {
                 if (normalizedName.isNotEmpty()) {
                     val now = clock.now()
-                    profileRepository.insert(
-                        Profile(
-                            id = idGenerator.newId(),
-                            name = normalizedName.take(80),
-                            avatarKey = "ocean",
-                            heightCm = height,
-                            birthDate = birthDate,
-                            preferredWeightUnit = current.unit,
-                            healthConnectEnabled = false,
-                            isActive = true,
-                            createdAt = now,
-                            updatedAt = now
-                        )
+                    val profile = existing?.copy(
+                        name = normalizedName.take(80),
+                        heightCm = height,
+                        birthDate = birthDate,
+                        preferredWeightUnit = current.unit,
+                        updatedAt = now
+                    ) ?: Profile(
+                        id = idGenerator.newId(),
+                        name = normalizedName.take(80),
+                        avatarKey = "ocean",
+                        heightCm = height,
+                        birthDate = birthDate,
+                        preferredWeightUnit = current.unit,
+                        healthConnectEnabled = false,
+                        isActive = true,
+                        createdAt = now,
+                        updatedAt = now
                     )
-                    preferencesRepository.setPendingGoalTargetKg(targetKg)
+                    if (existing == null) profileRepository.insert(profile)
+                    else profileRepository.update(profile)
+                    if (existing == null) {
+                        preferencesRepository.setPendingGoalTargetKg(targetKg)
+                    }
                 }
                 preferencesRepository.setDefaultWeightUnit(current.unit)
                 preferencesRepository.setThemeMode(current.themeMode)
                 preferencesRepository.setOnboardingCompleted(true)
-            }.onFailure {
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Throwable) {
                 _uiState.update {
                     it.copy(
                         isSaving = false,

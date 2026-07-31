@@ -84,6 +84,10 @@ private fun DashboardEmptyPreview() {
 @Composable
 private fun LiveWaitingPreview() = LivePreview(PreviewStates.liveWaiting)
 
+@Preview(name = "Primeira medição", widthDp = 360, heightDp = 800)
+@Composable
+private fun LiveFirstMeasurementPreview() = LivePreview(PreviewStates.liveFirstMeasurement)
+
 @Preview(name = "Medição variando", widthDp = 360, heightDp = 800)
 @Composable
 private fun LiveVaryingPreview() = LivePreview(PreviewStates.liveVarying)
@@ -160,6 +164,7 @@ private fun SettingsPreview() {
             onDevices = {},
             onDiagnostic = {},
             onReports = {},
+            onDataBackup = {},
             onPrivacy = {},
             onAbout = {}
         )
@@ -250,8 +255,7 @@ private fun DevicesPreview() {
             onForget = {},
             onDismissForget = {},
             onConfirmForget = {},
-            onMeasure = {},
-            onDiagnostic = {}
+            onMeasure = {}
         )
     }
 }
@@ -270,16 +274,11 @@ private fun ReportsPreview() {
             onIncludeChartChange = {},
             onIncludeTableChange = {},
             onIncludeNotesChange = {},
-            onIncludeMetricsChange = {},
-            onUnitChange = {},
             onGenerate = {},
             onShare = {},
             onShareSummary = {},
             onSaveFile = {},
-            onImport = {},
-            onClearTemporaryFiles = {},
-            onDismissImport = {},
-            onRestore = {},
+            onOpenDataBackup = {},
             onDismissMessage = {}
         )
     }

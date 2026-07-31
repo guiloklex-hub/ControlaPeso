@@ -7,18 +7,22 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import br.com.paivalab.controlapeso.app.ControlaPesoApplication
+import br.com.paivalab.controlapeso.data.preferences.AppPreferences
 import br.com.paivalab.controlapeso.data.preferences.ThemeMode
 import br.com.paivalab.controlapeso.domain.model.Profile
 import br.com.paivalab.controlapeso.domain.model.MeasurementSource
@@ -26,6 +30,7 @@ import br.com.paivalab.controlapeso.domain.model.WeightMeasurement
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.ui.dashboard.DashboardScreen
 import br.com.paivalab.controlapeso.ui.dashboard.DashboardUiState
+import br.com.paivalab.controlapeso.ui.designsystem.components.ProfileContextHeader
 import br.com.paivalab.controlapeso.ui.history.HistoryScreen
 import br.com.paivalab.controlapeso.ui.history.HistoryUiState
 import br.com.paivalab.controlapeso.ui.measurement.edit.ManualMeasurementScreen
@@ -60,7 +65,7 @@ class UiSmokeInstrumentedTest {
                                 profiles = listOf(profile),
                                 selectedProfileId = profile.id,
                                 weightText = "75,4",
-                                dateText = "27-07-2026",
+                                dateText = "27072026",
                                 timeText = "18:30"
                             ),
                             editing = false,
@@ -92,24 +97,160 @@ class UiSmokeInstrumentedTest {
     }
 
     @Test
+    fun profileContextHeaderReflowsAtLargeFont() {
+        composeRule.setContent {
+            val density = LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                LocalDensity provides Density(density.density, fontScale = 2f)
+            ) {
+                ControlaPesoTheme(themeMode = ThemeMode.LIGHT, dynamicColor = false) {
+                    Box(Modifier.fillMaxSize().width(360.dp)) {
+                        ProfileContextHeader(
+                            name = "Teste_Debug",
+                            unitSymbol = "kg",
+                            noProfileLabel = "Sem perfil",
+                            unitLabel = "Unidade: %s",
+                            switchLabel = "Trocar perfil",
+                            onSwitchProfile = {}
+                        )
+                    }
+                }
+            }
+        }
+
+        composeRule.onNodeWithText("Teste_Debug").assertIsDisplayed()
+        composeRule.onNodeWithText("Unidade: kg").assertIsDisplayed()
+        composeRule.onNodeWithText("Trocar perfil").assertIsDisplayed()
+    }
+
+    @Test
+    fun profileContextHeaderReflowsInCompactWidth() {
+        composeRule.setContent {
+            ControlaPesoTheme(themeMode = ThemeMode.LIGHT, dynamicColor = false) {
+                Box(Modifier.fillMaxSize().width(320.dp)) {
+                    ProfileContextHeader(
+                        name = "Teste_Debug",
+                        unitSymbol = "kg",
+                        noProfileLabel = "Sem perfil",
+                        unitLabel = "Unidade: %s",
+                        switchLabel = "Trocar perfil",
+                        onSwitchProfile = {}
+                    )
+                }
+            }
+        }
+
+        composeRule.onNodeWithText("Teste_Debug").assertIsDisplayed()
+        composeRule.onNodeWithText("Unidade: kg").assertIsDisplayed()
+        composeRule.onNodeWithText("Trocar perfil").assertIsDisplayed()
+    }
+
+    @Test
     fun dashboardRendersAtExpandedWidthInDarkTheme() {
+        val profilesOpened = AtomicBoolean(false)
         composeRule.setContent {
             ControlaPesoTheme(themeMode = ThemeMode.DARK, dynamicColor = false) {
-                Box(Modifier.width(840.dp)) {
+                Box(Modifier.fillMaxSize().requiredWidth(840.dp)) {
                     DashboardScreen(
                         state = DashboardUiState(isLoading = false),
                         onMeasure = {},
                         onManual = {},
                         onHistory = {},
-                        onProfiles = {},
+                        onProfiles = { profilesOpened.set(true) },
                         onGoals = {}
                     )
                 }
             }
         }
 
-        composeRule.onNodeWithText("Crie ou selecione um perfil para começar.")
-            .assertIsDisplayed()
+        composeRule.onNode(hasScrollAction()).performScrollToNode(hasText("Criar perfil"))
+        composeRule.onNode(hasScrollAction())
+            .performScrollToNode(hasText("Medir com a balança"))
+        composeRule.onNodeWithText("Criar perfil").performClick()
+        assertTrue(profilesOpened.get())
+        composeRule.onNode(hasScrollAction())
+            .performScrollToNode(hasText("Crie ou selecione um perfil para começar."))
+    }
+
+    @Test
+    fun dashboardWithOneMeasurementExplainsWhyTrendIsUnavailable() {
+        val profile = profile()
+        val measurement = measurement()
+        composeRule.setContent {
+            ControlaPesoTheme(dynamicColor = false) {
+                DashboardScreen(
+                    state = DashboardUiState(
+                        isLoading = false,
+                        profile = profile,
+                        measurements = listOf(measurement),
+                        statistics = MeasurementStatistics.calculate(listOf(measurement))
+                    ),
+                    onMeasure = {},
+                    onManual = {},
+                    onHistory = {},
+                    onProfiles = {},
+                    onGoals = {},
+                    onReports = {}
+                )
+            }
+        }
+
+        composeRule.onNode(hasScrollAction())
+            .performScrollToNode(hasText("Ainda não há tendência"))
+        assertTrue(
+            composeRule.onAllNodesWithText("Mín. eixo:", substring = true)
+                .fetchSemanticsNodes()
+                .isEmpty()
+        )
+    }
+
+    @Test
+    fun dashboardKeepsIncompleteOnboardingVisibleAfterConfiguringLater() {
+        composeRule.setContent {
+            ControlaPesoTheme(dynamicColor = false) {
+                DashboardScreen(
+                    state = DashboardUiState(
+                        isLoading = false,
+                        preferences = AppPreferences(onboardingCompleted = false)
+                    ),
+                    onMeasure = {},
+                    onManual = {},
+                    onHistory = {},
+                    onProfiles = {},
+                    onGoals = {},
+                    onOpenSettings = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Configuração incompleta").assertIsDisplayed()
+        composeRule.onNode(hasScrollAction())
+            .performScrollToNode(hasText("Orientação pausada"))
+        composeRule.onNodeWithText("Orientação pausada").assertIsDisplayed()
+        composeRule.onNode(hasScrollAction())
+            .performScrollToNode(hasText("Abrir Ajustes"))
+        composeRule.onNodeWithText("Abrir Ajustes").assertIsDisplayed()
+    }
+
+    @Test
+    fun dashboardUsesContextualSettingsActionInBluetoothStatus() {
+        composeRule.setContent {
+            ControlaPesoTheme(dynamicColor = false) {
+                DashboardScreen(
+                    state = DashboardUiState(isLoading = false),
+                    onMeasure = {},
+                    onManual = {},
+                    onHistory = {},
+                    onProfiles = {},
+                    onGoals = {},
+                    onOpenSettings = {}
+                )
+            }
+        }
+
+        composeRule.onNode(hasScrollAction())
+            .performScrollToNode(hasText("Abrir Ajustes"))
+        composeRule.onNodeWithText("Abrir Ajustes").assertIsDisplayed()
     }
 
     @Test
@@ -167,7 +308,7 @@ class UiSmokeInstrumentedTest {
 
         composeRule.onNodeWithTag("primary_navigation_history").performClick()
 
-        composeRule.onNodeWithText("Filtrar por origem").assertIsDisplayed()
+        composeRule.onNodeWithText("Origem: Todas").assertIsDisplayed()
     }
 
     @Test
@@ -193,7 +334,7 @@ class UiSmokeInstrumentedTest {
         composeRule.onNodeWithText("Adicionar peso manualmente").assertIsDisplayed()
 
         composeRule.onNodeWithTag("primary_navigation_history").performClick()
-        composeRule.onNodeWithText("Filtrar por origem").assertIsDisplayed()
+        composeRule.onNodeWithText("Origem: Todas").assertIsDisplayed()
 
         composeRule.onNodeWithTag("primary_navigation_measure").performClick()
         composeRule.onNodeWithText("Adicionar manualmente").assertIsDisplayed()

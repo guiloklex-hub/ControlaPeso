@@ -2,6 +2,7 @@ package br.com.paivalab.controlapeso.ui.history
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -14,12 +15,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +40,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import br.com.paivalab.controlapeso.BuildConfig
 import br.com.paivalab.controlapeso.R
 import br.com.paivalab.controlapeso.core.time.BrazilianDateFormatter
 import br.com.paivalab.controlapeso.core.time.MeasurementTimeFormatter
@@ -38,19 +48,21 @@ import br.com.paivalab.controlapeso.domain.model.MeasurementSource
 import br.com.paivalab.controlapeso.domain.model.WeightMeasurement
 import br.com.paivalab.controlapeso.data.preferences.ChartSize
 import br.com.paivalab.controlapeso.data.preferences.HistoryGrouping
+import br.com.paivalab.controlapeso.data.preferences.HistoryPeriod
 import br.com.paivalab.controlapeso.ui.components.BrazilianDateTextField
 import br.com.paivalab.controlapeso.ui.components.WeightChart
 import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
 import br.com.paivalab.controlapeso.ui.designsystem.components.EmptyState
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactAction
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactActionButton
 import br.com.paivalab.controlapeso.ui.designsystem.components.ErrorState
 import br.com.paivalab.controlapeso.ui.designsystem.components.LoadingState
 import br.com.paivalab.controlapeso.ui.designsystem.components.MeasurementListItem
 import br.com.paivalab.controlapeso.ui.designsystem.components.MetricTile
+import br.com.paivalab.controlapeso.ui.designsystem.components.ProfileAvatar
 import br.com.paivalab.controlapeso.ui.designsystem.components.SectionHeader
 import br.com.paivalab.controlapeso.ui.designsystem.components.StatusPill
-import java.time.format.DateTimeFormatter
 import java.time.YearMonth
-import java.util.Locale
 
 @Composable
 fun HistoryScreen(
@@ -60,16 +72,26 @@ fun HistoryScreen(
     onCustomEndChange: (String) -> Unit,
     onToggleSource: (MeasurementSource) -> Unit,
     onMeasurementClick: (String) -> Unit,
+    onToggleUnassigned: (String) -> Unit = {},
+    onAssignmentProfileChange: (String) -> Unit = {},
+    onAssignSelected: () -> Unit = {},
+    onResetFilters: () -> Unit = {},
+    onDismissAssignmentError: () -> Unit = {},
+    onRetry: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
-    val unit = state.profile?.preferredWeightUnit ?: state.preferences.defaultWeightUnit
+    var rangeMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    var sourceMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    val unit = state.preferences.defaultWeightUnit
+    val defaultRange = state.preferences.defaultHistoryPeriod.toHistoryRangeForUi()
     val chartHeight = when (state.preferences.chartSize) {
         ChartSize.COMPACT -> 180.dp
         ChartSize.COMFORTABLE -> 240.dp
         ChartSize.LARGE -> 320.dp
     }
     val reversedMeasurements = state.measurements.asReversed()
+    val hasTrend = state.measurements.size >= 2
     BoxWithConstraints(
         modifier
             .fillMaxSize()
@@ -101,13 +123,93 @@ fun HistoryScreen(
                 )
             }
             item {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    HistoryRange.entries.forEach { range ->
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Box {
                         FilterChip(
-                            selected = state.filters.range == range,
-                            onClick = { onRangeChange(range) },
-                            label = { Text(historyRangeText(range)) }
+                            selected = state.filters.range != defaultRange,
+                            onClick = { rangeMenuExpanded = true },
+                            label = {
+                                Text(
+                                    stringResource(
+                                        R.string.history_period_filter,
+                                        historyRangeText(state.filters.range)
+                                    )
+                                )
+                            },
+                            modifier = Modifier.heightIn(
+                                min = ControlaPesoDesignSystem.sizes.minimumTouchTarget
+                            )
                         )
+                        DropdownMenu(
+                            expanded = rangeMenuExpanded,
+                            onDismissRequest = { rangeMenuExpanded = false }
+                        ) {
+                            HistoryRange.entries.forEach { range ->
+                                DropdownMenuItem(
+                                    text = { Text(historyRangeText(range)) },
+                                    onClick = {
+                                        onRangeChange(range)
+                                        rangeMenuExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    Box {
+                        val sourceLabel = if (state.filters.sources.isEmpty()) {
+                            stringResource(R.string.all_sources)
+                        } else {
+                            stringResource(
+                                R.string.selected_sources_count,
+                                state.filters.sources.size
+                            )
+                        }
+                        FilterChip(
+                            selected = state.filters.sources.isNotEmpty(),
+                            onClick = { sourceMenuExpanded = true },
+                            label = {
+                                Text(stringResource(R.string.history_source_filter, sourceLabel))
+                            },
+                            modifier = Modifier.heightIn(
+                                min = ControlaPesoDesignSystem.sizes.minimumTouchTarget
+                            )
+                        )
+                        DropdownMenu(
+                            expanded = sourceMenuExpanded,
+                            onDismissRequest = { sourceMenuExpanded = false }
+                        ) {
+                            MeasurementSource.entries
+                                .filterNot { it == MeasurementSource.DEMO }
+                                .forEach { source ->
+                                    DropdownMenuItem(
+                                        text = { Text(sourceText(source)) },
+                                        leadingIcon = {
+                                            Checkbox(
+                                                checked = source in state.filters.sources,
+                                                onCheckedChange = null
+                                            )
+                                        },
+                                        onClick = { onToggleSource(source) }
+                                    )
+                                }
+                        }
+                    }
+                    if (
+                        state.filters.range != defaultRange ||
+                            state.filters.sources.isNotEmpty() ||
+                            state.filters.customStartText.isNotBlank() ||
+                            state.filters.customEndText.isNotBlank()
+                    ) {
+                        TextButton(onClick = {
+                            onResetFilters()
+                            rangeMenuExpanded = false
+                            sourceMenuExpanded = false
+                        }) {
+                            Text(stringResource(R.string.clear_filters))
+                        }
                     }
                 }
             }
@@ -135,21 +237,25 @@ fun HistoryScreen(
                     }
                 }
             }
-            item {
-                Text(
-                    stringResource(R.string.filter_by_source),
-                    fontWeight = FontWeight.SemiBold
-                )
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MeasurementSource.entries
-                        .filterNot { it == MeasurementSource.DEMO }
-                        .forEach { source ->
-                            FilterChip(
-                                selected = source in state.filters.sources,
-                                onClick = { onToggleSource(source) },
-                                label = { Text(sourceText(source)) }
-                            )
-                        }
+            if (state.assignmentError) {
+                item {
+                    ErrorState(
+                        title = stringResource(R.string.assignment_error_title),
+                        body = stringResource(R.string.assignment_error_body),
+                        actionLabel = stringResource(R.string.dismiss_error),
+                        onAction = onDismissAssignmentError,
+                        actionIcon = Icons.Filled.Close
+                    )
+                }
+            }
+            if (state.unassignedMeasurements.isNotEmpty()) {
+                item {
+                    UnassignedMeasurementsCard(
+                        state = state,
+                        onToggle = onToggleUnassigned,
+                        onProfileChange = onAssignmentProfileChange,
+                        onAssign = onAssignSelected
+                    )
                 }
             }
             if (state.isLoading) {
@@ -157,8 +263,11 @@ fun HistoryScreen(
             } else if (state.hasError) {
                 item {
                     ErrorState(
-                        title = stringResource(R.string.data_load_error),
-                        body = stringResource(R.string.data_load_error)
+                        title = stringResource(R.string.history_load_error_title),
+                        body = stringResource(R.string.data_load_error),
+                        actionLabel = stringResource(R.string.retry_action),
+                        onAction = onRetry,
+                        actionIcon = Icons.Filled.Refresh
                     )
                 }
             } else if (state.profile == null) {
@@ -176,7 +285,9 @@ fun HistoryScreen(
                     )
                 }
             } else {
-                if (state.measurements.any { it.source == MeasurementSource.DEMO }) {
+                if (BuildConfig.DEBUG && state.measurements.any {
+                        it.source == MeasurementSource.DEMO
+                    }) {
                     item {
                         StatusPill(
                             text = stringResource(R.string.history_contains_demo),
@@ -185,7 +296,9 @@ fun HistoryScreen(
                     }
                 }
                 item {
-                    if (expanded && state.statistics != null) {
+                    if (!hasTrend) {
+                        HistoryTrendUnavailableState(state.measurements.size)
+                    } else if (expanded && state.statistics != null) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -211,7 +324,7 @@ fun HistoryScreen(
                         )
                     }
                 }
-                if (!expanded && state.statistics != null) {
+                if (hasTrend && !expanded && state.statistics != null) {
                     item { StatisticsCard(state) }
                 }
                 if (expanded) {
@@ -219,6 +332,11 @@ fun HistoryScreen(
                         ExpandedHistoryListDetail(
                             measurements = reversedMeasurements,
                             unit = unit,
+                            profileName = state.profile?.name,
+                            profilePhotoPath = state.profile?.id?.let {
+                                state.profilePhotoPaths[it]
+                            },
+                            profileAvatarKey = state.profile?.avatarKey,
                             grouping = state.preferences.historyGrouping,
                             selectedId = selectedId,
                             onSelect = { selectedId = it.id },
@@ -243,12 +361,124 @@ fun HistoryScreen(
                             HistoryMeasurementCard(
                                 measurement = measurement,
                                 unit = unit,
+                                profileName = state.profile?.name,
+                                profilePhotoPath = state.profile?.id?.let {
+                                    state.profilePhotoPaths[it]
+                                },
+                                profileAvatarKey = state.profile?.avatarKey,
                                 onClick = { onMeasurementClick(measurement.id) }
                             )
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun HistoryTrendUnavailableState(measurementCount: Int) {
+    EmptyState(
+        title = stringResource(R.string.dashboard_trend_unavailable_title),
+        body = pluralStringResource(
+            R.plurals.dashboard_trend_unavailable_body,
+            measurementCount,
+            measurementCount
+        )
+    )
+}
+
+@Composable
+private fun UnassignedMeasurementsCard(
+    state: HistoryUiState,
+    onToggle: (String) -> Unit,
+    onProfileChange: (String) -> Unit,
+    onAssign: () -> Unit
+) {
+    val unit = state.preferences.defaultWeightUnit
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                stringResource(R.string.unassigned_measurements_title),
+                style = MaterialTheme.typography.titleLarge
+            )
+            Text(
+                pluralStringResource(
+                    R.plurals.unassigned_measurements_body,
+                    state.unassignedMeasurements.size,
+                    state.unassignedMeasurements.size
+                ),
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            if (state.profiles.isEmpty()) {
+                Text(stringResource(R.string.unassigned_measurements_no_profile))
+            } else {
+                Text(
+                    stringResource(R.string.assign_to_profile),
+                    fontWeight = FontWeight.SemiBold
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    state.profiles.forEach { profile ->
+                        FilterChip(
+                            selected = state.assignmentProfileId == profile.id,
+                            onClick = { onProfileChange(profile.id) },
+                            label = { Text(profile.name) },
+                            modifier = Modifier.heightIn(
+                                min = ControlaPesoDesignSystem.sizes.minimumTouchTarget
+                            )
+                        )
+                    }
+                }
+            }
+            state.unassignedMeasurements.forEach { measurement ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Checkbox(
+                        checked = measurement.id in state.selectedUnassignedIds,
+                        onCheckedChange = { onToggle(measurement.id) }
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            unit.formatFromKilograms(measurement.weightKg),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            formatMeasurementDateTime(measurement),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            sourceText(measurement.source),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            CompactActionButton(
+                CompactAction(
+                    label = stringResource(R.string.assign_selected_measurements),
+                    icon = Icons.Filled.AddCircle,
+                    onClick = onAssign,
+                    primary = true,
+                    enabled = state.selectedUnassignedIds.isNotEmpty() &&
+                        state.assignmentProfileId != null &&
+                        !state.isAssigning
+                )
+            )
         }
     }
 }
@@ -261,7 +491,7 @@ private fun ChartCard(
     onSelect: (WeightMeasurement) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val unit = state.profile?.preferredWeightUnit ?: state.preferences.defaultWeightUnit
+    val unit = state.preferences.defaultWeightUnit
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = androidx.compose.material3.CardDefaults.cardColors(
@@ -298,7 +528,7 @@ private fun StatisticsCard(
     modifier: Modifier = Modifier
 ) {
     val stats = state.statistics ?: return
-    val unit = state.profile?.preferredWeightUnit ?: state.preferences.defaultWeightUnit
+    val unit = state.preferences.defaultWeightUnit
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(
@@ -355,6 +585,9 @@ private fun StatisticsCard(
 private fun ExpandedHistoryListDetail(
     measurements: List<WeightMeasurement>,
     unit: br.com.paivalab.controlapeso.domain.model.WeightUnit,
+    profileName: String?,
+    profilePhotoPath: String?,
+    profileAvatarKey: String?,
     grouping: HistoryGrouping,
     selectedId: String?,
     onSelect: (WeightMeasurement) -> Unit,
@@ -386,6 +619,9 @@ private fun ExpandedHistoryListDetail(
                     HistoryMeasurementCard(
                         measurement = measurement,
                         unit = unit,
+                        profileName = profileName,
+                        profilePhotoPath = profilePhotoPath,
+                        profileAvatarKey = profileAvatarKey,
                         onClick = { onSelect(measurement) }
                     )
                 }
@@ -433,9 +669,14 @@ private fun ExpandedHistoryListDetail(
                     selected.note?.let {
                         Text(stringResource(R.string.detail_note, it))
                     }
-                    Button(onClick = { onOpenDetail(selected.id) }) {
-                        Text(stringResource(R.string.open_full_detail))
-                    }
+                    CompactActionButton(
+                        CompactAction(
+                            label = stringResource(R.string.open_full_detail),
+                            icon = Icons.AutoMirrored.Filled.ArrowForward,
+                            onClick = { onOpenDetail(selected.id) },
+                            primary = true
+                        )
+                    )
                 }
             }
         }
@@ -446,19 +687,43 @@ private fun ExpandedHistoryListDetail(
 private fun HistoryMeasurementCard(
     measurement: WeightMeasurement,
     unit: br.com.paivalab.controlapeso.domain.model.WeightUnit,
+    profileName: String? = null,
+    profilePhotoPath: String? = null,
+    profileAvatarKey: String? = null,
     onClick: () -> Unit
 ) {
     MeasurementListItem(
         value = unit.formatFromKilograms(measurement.weightKg),
         dateTime = formatMeasurementDateTime(measurement),
         source = sourceText(measurement.source),
+        sourceIsDemo = BuildConfig.DEBUG && measurement.source == MeasurementSource.DEMO,
         note = measurement.note,
+        contextLabel = profileName ?: stringResource(R.string.unassigned_profile),
+        leadingContent = profileName?.let { name ->
+            {
+                ProfileAvatar(
+                    name = name,
+                    contentDescription = name,
+                    photoPath = profilePhotoPath,
+                    avatarKey = profileAvatarKey
+                )
+            }
+        },
         onClick = onClick
     )
 }
 
 private fun formatMeasurementDateTime(measurement: WeightMeasurement): String =
     MeasurementTimeFormatter.dateTime(measurement)
+
+private fun HistoryPeriod.toHistoryRangeForUi(): HistoryRange = when (this) {
+    HistoryPeriod.DAYS_7 -> HistoryRange.DAYS_7
+    HistoryPeriod.DAYS_30 -> HistoryRange.DAYS_30
+    HistoryPeriod.MONTHS_3 -> HistoryRange.MONTHS_3
+    HistoryPeriod.MONTHS_6 -> HistoryRange.MONTHS_6
+    HistoryPeriod.YEAR_1 -> HistoryRange.YEAR_1
+    HistoryPeriod.ALL -> HistoryRange.ALL
+}
 
 private fun groupLabel(
     measurement: WeightMeasurement,
@@ -475,15 +740,11 @@ private fun groupLabel(
         HistoryGrouping.MONTH -> {
             val month = YearMonth.from(date)
             month.takeIf { previousDate == null || YearMonth.from(previousDate) != it }
-                ?.format(monthFormatter)
+                ?.atDay(1)
+                ?.let(BrazilianDateFormatter::format)
         }
     }
 }
-
-private val monthFormatter = DateTimeFormatter.ofPattern(
-    "MMMM 'de' uuuu",
-    Locale.forLanguageTag("pt-BR")
-)
 
 @Composable
 private fun historyRangeText(range: HistoryRange): String = stringResource(
@@ -505,6 +766,10 @@ fun sourceText(source: MeasurementSource): String = stringResource(
         MeasurementSource.MANUAL -> R.string.source_manual
         MeasurementSource.IMPORT -> R.string.source_import
         MeasurementSource.HEALTH_CONNECT -> R.string.source_health_connect
-        MeasurementSource.DEMO -> R.string.source_demo
+        MeasurementSource.DEMO -> if (BuildConfig.DEBUG) {
+            R.string.source_demo
+        } else {
+            R.string.source_import
+        }
     }
 )

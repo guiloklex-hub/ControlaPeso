@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import br.com.paivalab.controlapeso.app.AppContainer
 import br.com.paivalab.controlapeso.core.time.BrazilianDateFormatter
 import br.com.paivalab.controlapeso.data.preferences.AppPreferences
+import br.com.paivalab.controlapeso.data.preferences.HistoryPeriod
 import br.com.paivalab.controlapeso.domain.model.MeasurementSource
 import br.com.paivalab.controlapeso.domain.model.Profile
 import br.com.paivalab.controlapeso.domain.model.WeightMeasurement
@@ -13,20 +14,20 @@ import br.com.paivalab.controlapeso.domain.usecase.statistics.MeasurementStatist
 import br.com.paivalab.controlapeso.domain.usecase.statistics.WeightStatistics
 import java.time.Instant
 import java.time.ZoneId
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import br.com.paivalab.controlapeso.data.preferences.HistoryPeriod
 
 enum class HistoryRange {
     DAYS_7,
@@ -49,10 +50,30 @@ data class HistoryFilters(
 data class HistoryUiState(
     val isLoading: Boolean = true,
     val profile: Profile? = null,
+    val profiles: List<Profile> = emptyList(),
+    val profilePhotoPaths: Map<String, String> = emptyMap(),
     val preferences: AppPreferences = AppPreferences(),
     val filters: HistoryFilters = HistoryFilters(),
     val measurements: List<WeightMeasurement> = emptyList(),
+    val unassignedMeasurements: List<WeightMeasurement> = emptyList(),
+    val selectedUnassignedIds: Set<String> = emptySet(),
+    val assignmentProfileId: String? = null,
+    val isAssigning: Boolean = false,
+    val assignmentError: Boolean = false,
     val statistics: WeightStatistics? = null,
+    val hasError: Boolean = false
+)
+
+private data class ActiveHistoryData(
+    val profile: Profile?,
+    val filters: HistoryFilters,
+    val measurements: List<WeightMeasurement>
+)
+
+private data class HistoryAssignmentState(
+    val selectedIds: Set<String> = emptySet(),
+    val profileId: String? = null,
+    val isAssigning: Boolean = false,
     val hasError: Boolean = false
 )
 
@@ -62,6 +83,8 @@ class HistoryViewModel(
     private val zoneId: ZoneId = ZoneId.systemDefault()
 ) : ViewModel() {
     private val filters = MutableStateFlow(HistoryFilters())
+    private val assignment = MutableStateFlow(HistoryAssignmentState())
+    private val refreshTrigger = MutableStateFlow(0)
 
     init {
         viewModelScope.launch {
@@ -83,11 +106,13 @@ class HistoryViewModel(
     ) { profile, currentFilters -> profile to currentFilters }
         .flatMapLatest { (profile, currentFilters) ->
             if (profile == null) {
-                flowOf(Triple<Profile?, HistoryFilters, List<WeightMeasurement>>(
-                    null,
-                    currentFilters,
-                    emptyList()
-                ))
+                flowOf(
+                    ActiveHistoryData(
+                        profile = null,
+                        filters = currentFilters,
+                        measurements = emptyList()
+                    )
+                )
             } else {
                 val bounds = bounds(currentFilters)
                 val invalidCustom =
@@ -108,36 +133,80 @@ class HistoryViewModel(
                     } else {
                         measurements.filter { it.source in currentFilters.sources }
                     }
-                    Triple(
-                        profile,
-                        currentFilters.copy(
-                            invalidCustomRange = invalidCustom
-                        ),
-                        sourceFiltered.sortedBy(WeightMeasurement::measuredAt)
+                    ActiveHistoryData(
+                        profile = profile,
+                        filters = currentFilters.copy(invalidCustomRange = invalidCustom),
+                        measurements = sourceFiltered.sortedBy(WeightMeasurement::measuredAt)
                     )
                 }
             }
         }
 
-    val uiState: StateFlow<HistoryUiState> = combine(
-        measurementData,
-        container.preferencesRepository.preferences
-    ) { (profile, currentFilters, measurements), preferences ->
-        HistoryUiState(
-            isLoading = false,
-            profile = profile,
-            preferences = preferences,
-            filters = currentFilters,
-            measurements = measurements,
-            statistics = MeasurementStatistics.calculate(measurements)
-        )
-    }.catch {
-        emit(HistoryUiState(isLoading = false, hasError = true))
+    private val unassignedData = combine(
+        container.measurementRepository.observeUnassigned(),
+        filters
+    ) { measurements, currentFilters ->
+        val bounds = bounds(currentFilters)
+        val invalidCustom = currentFilters.range == HistoryRange.CUSTOM && bounds == null
+        if (invalidCustom) {
+            emptyList()
+        } else {
+            measurements
+                .filter { measurement ->
+                    val inRange = bounds == null || (
+                        measurement.measuredAt >= bounds.first &&
+                            measurement.measuredAt < bounds.second
+                        )
+                    val sourceMatches = currentFilters.sources.isEmpty() ||
+                        measurement.source in currentFilters.sources
+                    inRange && sourceMatches
+                }
+                .sortedWith(
+                    compareByDescending<WeightMeasurement> { it.measuredAt }
+                        .thenByDescending { it.id }
+                )
+        }
+    }
+
+    val uiState: StateFlow<HistoryUiState> = refreshTrigger.flatMapLatest {
+        combine(
+            measurementData,
+            unassignedData,
+            container.profileRepository.observeAll(),
+            container.preferencesRepository.preferences,
+            assignment
+        ) { active, unassigned, profiles, preferences, local ->
+            val availableIds = unassigned.map { it.id }.toSet()
+            HistoryUiState(
+                isLoading = false,
+                profile = active.profile,
+                profiles = profiles,
+                profilePhotoPaths = profiles.mapNotNull { profile ->
+                    container.profilePhotoStore.pathFor(profile.id)
+                        ?.let { profile.id to it }
+                }.toMap(),
+                preferences = preferences,
+                filters = active.filters,
+                measurements = active.measurements,
+                unassignedMeasurements = unassigned,
+                selectedUnassignedIds = local.selectedIds.filter { it in availableIds }.toSet(),
+                assignmentProfileId = local.profileId ?: active.profile?.id,
+                isAssigning = local.isAssigning,
+                assignmentError = local.hasError,
+                statistics = MeasurementStatistics.calculate(active.measurements)
+            )
+        }.catch {
+            emit(HistoryUiState(isLoading = false, hasError = true))
+        }
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
         HistoryUiState()
     )
+
+    fun retry() {
+        refreshTrigger.update { it + 1 }
+    }
 
     fun setRange(value: HistoryRange) =
         filters.update { it.copy(range = value, invalidCustomRange = false) }
@@ -168,13 +237,69 @@ class HistoryViewModel(
         )
     }
 
-    private fun bounds(filters: HistoryFilters): Pair<Instant, Instant>? {
-        return HistoryDateRangeCalculator.bounds(
+    fun resetFilters() {
+        viewModelScope.launch {
+            val defaultRange = container.preferencesRepository.preferences.first()
+                .defaultHistoryPeriod
+                .toHistoryRange()
+            filters.value = HistoryFilters(range = defaultRange)
+        }
+    }
+
+    fun toggleUnassignedSelection(measurementId: String) = assignment.update { current ->
+        current.copy(
+            selectedIds = if (measurementId in current.selectedIds) {
+                current.selectedIds - measurementId
+            } else {
+                current.selectedIds + measurementId
+            },
+            hasError = false
+        )
+    }
+
+    fun setAssignmentProfile(profileId: String) = assignment.update {
+        it.copy(profileId = profileId, hasError = false)
+    }
+
+    fun assignSelectedToProfile() {
+        val state = uiState.value
+        val profileId = state.assignmentProfileId ?: return
+        val selectedIds = state.selectedUnassignedIds
+        if (selectedIds.isEmpty() || state.isAssigning) return
+        assignment.update { it.copy(isAssigning = true, hasError = false) }
+        viewModelScope.launch {
+            try {
+                val assignedCount = container.measurementRepository.assignToProfile(
+                    measurementIds = selectedIds.toList(),
+                    profileId = profileId,
+                    updatedAt = container.clock.now()
+                )
+                check(assignedCount == selectedIds.size) {
+                    "Nem todas as medições selecionadas continuam sem perfil."
+                }
+                assignment.update {
+                    it.copy(
+                        selectedIds = it.selectedIds - selectedIds,
+                        isAssigning = false,
+                        hasError = false
+                    )
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Throwable) {
+                assignment.update { it.copy(isAssigning = false, hasError = true) }
+            }
+        }
+    }
+
+    fun dismissAssignmentError() = assignment.update { it.copy(hasError = false) }
+
+    private fun bounds(filters: HistoryFilters): Pair<Instant, Instant>? =
+        HistoryDateRangeCalculator.bounds(
             filters = filters,
             today = container.clock.now().atZone(zoneId).toLocalDate(),
             zoneId = zoneId
         )
-    }
 
     class Factory(private val container: AppContainer) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")

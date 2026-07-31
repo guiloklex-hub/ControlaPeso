@@ -10,6 +10,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
 
 @Composable
@@ -32,7 +34,11 @@ fun SectionHeader(
                 ControlaPesoDesignSystem.spacing.xxs
             )
         ) {
-            Text(title, style = MaterialTheme.typography.titleLarge)
+            Text(
+                title,
+                modifier = Modifier.semantics { heading() },
+                style = MaterialTheme.typography.titleLarge
+            )
             supportingText?.let {
                 Text(
                     it,
@@ -44,4 +50,3 @@ fun SectionHeader(
         action()
     }
 }
-

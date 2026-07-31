@@ -11,11 +11,13 @@ import br.com.paivalab.controlapeso.domain.model.GoalStatus
 import br.com.paivalab.controlapeso.domain.model.Profile
 import br.com.paivalab.controlapeso.domain.model.WeightGoal
 import br.com.paivalab.controlapeso.domain.model.WeightMeasurement
+import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.domain.repository.GoalRepository
 import br.com.paivalab.controlapeso.domain.usecase.goals.CalculateGoalProgress
 import br.com.paivalab.controlapeso.domain.usecase.goals.GoalProgress
 import java.time.DateTimeException
 import java.time.ZoneId
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
@@ -47,6 +49,8 @@ data class GoalItem(
 
 data class GoalsUiState(
     val profile: Profile? = null,
+    val profilePhotoPath: String? = null,
+    val unit: WeightUnit = WeightUnit.KILOGRAM,
     val goals: List<GoalItem> = emptyList(),
     val latestWeightKg: Double? = null,
     val form: GoalForm? = null,
@@ -75,10 +79,18 @@ class GoalsViewModel(
         }
     }
 
-    val uiState = combine(data, local) { (profile, goals, measurements), state ->
+    val uiState = combine(
+        data,
+        local,
+        container.preferencesRepository.preferences
+    ) { (profile, goals, measurements), state, preferences ->
         val latest = measurements.maxByOrNull(WeightMeasurement::measuredAt)?.weightKg
         state.copy(
             profile = profile,
+            profilePhotoPath = profile?.let {
+                container.profilePhotoStore.pathFor(it.id)
+            },
+            unit = preferences.defaultWeightUnit,
             latestWeightKg = latest,
             goals = goals.map { goal ->
                 GoalItem(
@@ -95,20 +107,26 @@ class GoalsViewModel(
 
     fun startCreate() {
         val latest = uiState.value.latestWeightKg
+        val unit = uiState.value.unit
         local.update {
             it.copy(
-                form = GoalForm(startWeightText = latest?.toString().orEmpty()),
+                form = GoalForm(
+                    startWeightText = latest?.let {
+                        formatGoalWeightInput(it, unit)
+                    }.orEmpty()
+                ),
                 error = null
             )
         }
     }
 
     fun startEdit(goal: WeightGoal) = local.update {
+        val unit = uiState.value.unit
         it.copy(
             form = GoalForm(
                 editingId = goal.id,
-                startWeightText = goal.startWeightKg.toString(),
-                targetWeightText = goal.targetWeightKg.toString(),
+                startWeightText = formatGoalWeightInput(goal.startWeightKg, unit),
+                targetWeightText = formatGoalWeightInput(goal.targetWeightKg, unit),
                 targetDateText = goal.targetDate
                     ?.let(BrazilianDateFormatter::inputDigits)
                     .orEmpty()
@@ -128,7 +146,7 @@ class GoalsViewModel(
         val state = uiState.value
         val profile = state.profile ?: return
         val form = state.form ?: return
-        val unit = profile.preferredWeightUnit
+        val unit = state.unit
         val start = form.startWeightText.localizedDouble()?.let(unit::toKilograms)
         val target = form.targetWeightText.localizedDouble()?.let(unit::toKilograms)
         val targetDate = try {
@@ -152,7 +170,7 @@ class GoalsViewModel(
         val validTarget = requireNotNull(target)
         local.update { it.copy(isSaving = true, error = null) }
         viewModelScope.launch {
-            runCatching {
+            try {
                 val existing = state.goals.firstOrNull {
                     it.goal.id == form.editingId
                 }?.goal
@@ -170,9 +188,10 @@ class GoalsViewModel(
                     updatedAt = now
                 )
                 if (existing == null) repository.insert(goal) else repository.update(goal)
-            }.onSuccess {
                 local.update { it.copy(form = null, isSaving = false) }
-            }.onFailure {
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Throwable) {
                 local.update {
                     it.copy(isSaving = false, error = GoalFormError.SAVE_FAILED)
                 }
@@ -215,3 +234,6 @@ class GoalsViewModel(
 
 private fun String.localizedDouble(): Double? =
     trim().replace(',', '.').toDoubleOrNull()?.takeIf(Double::isFinite)
+
+internal fun formatGoalWeightInput(weightKg: Double, unit: WeightUnit): String =
+    unit.formatInputFromKilograms(weightKg)

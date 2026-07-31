@@ -65,7 +65,7 @@ fronteira que o redesign deve preservar, não como alvos de reescrita.
 | Componente | Uso atual | Evolução visual permitida | Invariante |
 | --- | --- | --- | --- |
 | `WeightChart` | Dashboard e Histórico | Melhorar plotagem, seleção e resumo semântico. | Manter Canvas, pontos limitados e alternativa textual. |
-| `BrazilianDateTextField` | Onboarding e formulários | Padronizar como campo do design system. | Preservar máscara e cursor `DD-MM-AAAA`. |
+| `BrazilianDateTextField` | Onboarding e formulários | Padronizar como campo do design system. | Preservar máscara e cursor `DD/MM/AAAA`. |
 | Cartões locais | Praticamente todas as telas | Trocar por níveis claros de superfície. | Não criar cards dentro de cards. |
 | Botões e chips | CTAs, filtros e escolhas | Definir prioridade e estado semântico. | Rótulo e área mínima de toque. |
 | App bars | Diagnóstico e secundárias; ausentes em raízes | Unificar título, retorno e ação contextual. | Não quebrar rotas ou back stack. |

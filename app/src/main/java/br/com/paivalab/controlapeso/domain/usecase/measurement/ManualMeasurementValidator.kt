@@ -15,7 +15,7 @@ data class ManualMeasurementInput(
     val dateText: String,
     val timeText: String,
     val unit: WeightUnit,
-    val profileId: String,
+    val profileId: String?,
     val note: String
 )
 
@@ -23,7 +23,7 @@ data class ValidatedManualMeasurement(
     val weightKg: Double,
     val measuredAt: Instant,
     val zoneOffsetSeconds: Int,
-    val profileId: String,
+    val profileId: String?,
     val note: String?
 )
 
@@ -49,8 +49,6 @@ class ManualMeasurementValidator(
 ) {
     fun validate(input: ManualMeasurementInput): ManualValidationResult {
         val errors = mutableListOf<ManualValidationError>()
-        if (input.profileId.isBlank()) errors += ManualValidationError.PROFILE_REQUIRED
-
         val normalizedWeight = input.weightText.trim().replace(',', '.')
         val weightValue = normalizedWeight.toDoubleOrNull()
         when {

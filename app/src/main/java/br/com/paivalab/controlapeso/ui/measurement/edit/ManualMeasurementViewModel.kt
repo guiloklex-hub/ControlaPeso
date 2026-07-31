@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import br.com.paivalab.controlapeso.app.AppContainer
 import br.com.paivalab.controlapeso.core.time.BrazilianDateFormatter
+import br.com.paivalab.controlapeso.core.time.BrazilianDateTimeFormatter
 import br.com.paivalab.controlapeso.domain.model.Profile
 import br.com.paivalab.controlapeso.domain.model.MeasurementSource
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
@@ -16,20 +17,23 @@ import br.com.paivalab.controlapeso.domain.usecase.measurement.ManualValidationE
 import br.com.paivalab.controlapeso.domain.usecase.profile.ProfileSelectionPolicy
 import java.time.ZoneId
 import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class ManualMeasurementUiState(
     val profiles: List<Profile> = emptyList(),
+    val profilePhotoPaths: Map<String, String> = emptyMap(),
     val selectedProfileId: String? = null,
+    val profileSelectionExplicit: Boolean = false,
     val weightText: String = "",
     val unit: WeightUnit = WeightUnit.KILOGRAM,
+    val unitSelectionExplicit: Boolean = false,
     val dateText: String = "",
     val timeText: String = "",
     val note: String = "",
@@ -55,19 +59,22 @@ class ManualMeasurementViewModel(
 
     val uiState: StateFlow<ManualMeasurementUiState> = combine(
         container.profileRepository.observeAll(),
+        container.preferencesRepository.preferences,
         local
-    ) { profiles, state ->
+    ) { profiles, preferences, state ->
         state.copy(
             profiles = profiles,
-            selectedProfileId = state.selectedProfileId
-                ?: ProfileSelectionPolicy.defaultProfileId(profiles),
-            unit = if (state.selectedProfileId == null) {
-                profiles.firstOrNull {
-                    it.id == ProfileSelectionPolicy.defaultProfileId(profiles)
-                }?.preferredWeightUnit ?: state.unit
+            profilePhotoPaths = profiles.mapNotNull { profile ->
+                container.profilePhotoStore.pathFor(profile.id)
+                    ?.let { profile.id to it }
+            }.toMap(),
+            selectedProfileId = if (state.profileSelectionExplicit) {
+                state.selectedProfileId
             } else {
-                state.unit
-            }
+                state.selectedProfileId ?: ProfileSelectionPolicy.defaultProfileId(profiles)
+            },
+            unit = if (state.unitSelectionExplicit) state.unit
+            else preferences.defaultWeightUnit
         )
     }.stateIn(
         viewModelScope,
@@ -83,24 +90,39 @@ class ManualMeasurementViewModel(
         val localDateTime = container.clock.now().atZone(ZoneId.systemDefault())
         return ManualMeasurementUiState(
             dateText = BrazilianDateFormatter.inputDigits(localDateTime.toLocalDate()),
-            timeText = localDateTime.toLocalTime()
-                .format(DateTimeFormatter.ofPattern("HH:mm"))
+            timeText = BrazilianDateTimeFormatter.time(localDateTime.toLocalTime())
         )
     }
 
     fun setProfile(id: String) {
-        val profile = uiState.value.profiles.firstOrNull { it.id == id }
         local.update {
             it.copy(
                 selectedProfileId = id,
-                unit = profile?.preferredWeightUnit ?: it.unit,
+                profileSelectionExplicit = true,
                 errors = emptyList()
             )
         }
     }
 
+    fun clearProfile() = local.update {
+        it.copy(
+            selectedProfileId = null,
+            profileSelectionExplicit = true,
+            errors = emptyList()
+        )
+    }
+
     fun setWeight(value: String) = update { copy(weightText = value) }
-    fun setUnit(value: WeightUnit) = update { copy(unit = value) }
+    fun setUnit(value: WeightUnit) {
+        val currentUnit = uiState.value.unit
+        local.update { state ->
+            state.copy(
+                unit = value,
+                unitSelectionExplicit = true,
+                weightText = value.convertInput(state.weightText, currentUnit)
+            )
+        }
+    }
     fun setDate(value: String) = update {
         copy(dateText = BrazilianDateFormatter.inputDigits(value))
     }
@@ -124,7 +146,7 @@ class ManualMeasurementViewModel(
                         dateText = state.dateText,
                         timeText = state.timeText,
                         unit = state.unit,
-                        profileId = state.selectedProfileId.orEmpty(),
+                        profileId = state.selectedProfileId,
                         note = state.note
                     ),
                     existingId = measurementId,
@@ -154,7 +176,9 @@ class ManualMeasurementViewModel(
         measurement: br.com.paivalab.controlapeso.domain.model.WeightMeasurement
     ) {
         if (measurement.source == MeasurementSource.HEALTH_CONNECT) return
-        val profile = container.profileRepository.findById(measurement.profileId)
+        val profile = measurement.profileId?.let { profileId ->
+            container.profileRepository.findById(profileId)
+        }
         if (profile?.healthConnectEnabled == true) {
             container.healthConnectWeightWriter.write(measurement)
         }
@@ -163,8 +187,7 @@ class ManualMeasurementViewModel(
     private fun loadMeasurement(id: String) {
         viewModelScope.launch {
             val measurement = container.measurementRepository.findById(id) ?: return@launch
-            val profile = container.profileRepository.findById(measurement.profileId)
-            val unit = profile?.preferredWeightUnit ?: WeightUnit.KILOGRAM
+            val unit = container.preferencesRepository.preferences.first().defaultWeightUnit
             val offset = measurement.zoneOffsetSeconds
                 ?.let(ZoneOffset::ofTotalSeconds)
                 ?: ZoneId.systemDefault().rules.getOffset(measurement.measuredAt)
@@ -172,12 +195,13 @@ class ManualMeasurementViewModel(
             local.update {
                 it.copy(
                     selectedProfileId = measurement.profileId,
-                    weightText = unit.fromKilograms(measurement.weightKg).toString(),
+                    profileSelectionExplicit = true,
+                    weightText = unit.formatInputFromKilograms(measurement.weightKg),
                     unit = unit,
                     dateText = BrazilianDateFormatter.inputDigits(localDateTime.toLocalDate()),
-                    timeText = localDateTime.toLocalTime()
-                        .format(DateTimeFormatter.ofPattern("HH:mm")),
-                    note = measurement.note.orEmpty()
+                    timeText = BrazilianDateTimeFormatter.time(localDateTime.toLocalTime()),
+                    note = measurement.note.orEmpty(),
+                    unitSelectionExplicit = false
                 )
             }
         }

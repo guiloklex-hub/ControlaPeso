@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 interface MeasurementRepository {
     fun observeAll(): Flow<List<WeightMeasurement>>
     fun observeForProfile(profileId: String): Flow<List<WeightMeasurement>>
+    fun observeUnassigned(): Flow<List<WeightMeasurement>>
     fun observeInRange(
         profileId: String,
         startInclusive: Instant,
@@ -22,8 +23,13 @@ interface MeasurementRepository {
     suspend fun delete(measurement: WeightMeasurement)
     suspend fun deleteById(id: String): Boolean
     suspend fun deleteDemoData(): Int
-    suspend fun findProbableDuplicate(
+    suspend fun assignToProfile(
+        measurementIds: List<String>,
         profileId: String,
+        updatedAt: Instant
+    ): Int
+    suspend fun findProbableDuplicate(
+        profileId: String?,
         weightKg: Double,
         measuredAt: Instant,
         deviceAddress: String?,

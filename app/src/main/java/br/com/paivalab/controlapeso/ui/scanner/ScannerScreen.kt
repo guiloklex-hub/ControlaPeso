@@ -2,7 +2,6 @@ package br.com.paivalab.controlapeso.ui.scanner
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,18 +12,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,6 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
@@ -46,11 +52,16 @@ import br.com.paivalab.controlapeso.bluetooth.BleScanError
 import br.com.paivalab.controlapeso.bluetooth.BleScanPhase
 import br.com.paivalab.controlapeso.bluetooth.BleSupportStatus
 import br.com.paivalab.controlapeso.bluetooth.BluetoothPowerStatus
+import br.com.paivalab.controlapeso.core.time.BrazilianDateTimeFormatter
 import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
 import br.com.paivalab.controlapeso.ui.designsystem.components.EmptyState
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactAction
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactActionButton
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactActionGroup
 import br.com.paivalab.controlapeso.ui.designsystem.components.ResponsiveScreenList
-import java.text.DateFormat
-import java.util.Date
+import br.com.paivalab.controlapeso.ui.designsystem.components.StatusCard
+import br.com.paivalab.controlapeso.ui.designsystem.components.StatusCardTone
+import java.time.Instant
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,6 +69,7 @@ import java.util.Locale
 fun ScannerScreen(
     uiState: ScannerUiState,
     onRequestPermissions: () -> Unit,
+    onOpenBluetoothSettings: () -> Unit = {},
     onStartScan: () -> Unit,
     onStopScan: () -> Unit,
     onClearResults: () -> Unit,
@@ -67,6 +79,7 @@ fun ScannerScreen(
     modifier: Modifier = Modifier
 ) {
     var maskAddresses by rememberSaveable { mutableStateOf(true) }
+    var technicalInfoExpanded by rememberSaveable { mutableStateOf(false) }
     val diagnosticText = BleDiagnosticFormatter.format(
         devices = uiState.devices,
         history = uiState.advertisementHistory,
@@ -76,7 +89,7 @@ fun ScannerScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) }
+                title = { Text(stringResource(R.string.bluetooth_diagnostic)) }
             )
         }
     ) { innerPadding ->
@@ -87,8 +100,19 @@ fun ScannerScreen(
             item {
                 Text(
                     text = stringResource(R.string.scanner_subtitle),
+                    modifier = Modifier.semantics { heading() },
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            item {
+                DiagnosticStatusCard(
+                    uiState = uiState,
+                    onRequestPermissions = onRequestPermissions,
+                    onOpenBluetoothSettings = onOpenBluetoothSettings,
+                    onStartScan = onStartScan,
+                    onStopScan = onStopScan
                 )
             }
 
@@ -107,15 +131,6 @@ fun ScannerScreen(
             }
 
             item {
-                ActionButtons(
-                    uiState = uiState,
-                    onRequestPermissions = onRequestPermissions,
-                    onStartScan = onStartScan,
-                    onStopScan = onStopScan,
-                    onClearResults = onClearResults
-                )
-            }
-            item {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.large,
@@ -127,64 +142,72 @@ fun ScannerScreen(
                             ControlaPesoDesignSystem.spacing.xs
                         )
                     ) {
-                        Text(
-                            stringResource(
-                                R.string.diagnostic_parser_version,
-                                BleDiagnosticFormatter.PARSER_VERSION
+                        CompactActionButton(
+                            CompactAction(
+                                label = stringResource(
+                                    if (technicalInfoExpanded) {
+                                        R.string.diagnostic_support_information_hide
+                                    } else {
+                                        R.string.diagnostic_support_information_show
+                                    }
+                                ),
+                                icon = Icons.Filled.Info,
+                                onClick = {
+                                    technicalInfoExpanded = !technicalInfoExpanded
+                                }
                             )
                         )
-                        Text(stringResource(R.string.diagnostic_advertising_notice))
-                        Text(
-                            stringResource(R.string.diagnostic_gatt_state),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            stringResource(R.string.diagnostic_stability_notice),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        if (technicalInfoExpanded) {
                             Text(
-                                stringResource(R.string.mask_addresses_export),
-                                modifier = Modifier.weight(1f)
+                                stringResource(
+                                    R.string.diagnostic_parser_version,
+                                    BleDiagnosticFormatter.PARSER_VERSION
+                                )
                             )
-                            Switch(
-                                checked = maskAddresses,
-                                onCheckedChange = { maskAddresses = it }
+                            Text(stringResource(R.string.diagnostic_advertising_notice))
+                            Text(
+                                stringResource(R.string.diagnostic_gatt_state),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        }
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(
-                                onClick = onStartScan,
-                                enabled = uiState.permissionStatus ==
-                                    BlePermissionStatus.GRANTED &&
-                                    uiState.bluetoothSupport ==
-                                    BleSupportStatus.SUPPORTED &&
-                                    uiState.bluetoothPower ==
-                                    BluetoothPowerStatus.ON &&
-                                    !uiState.isScanning
+                            Text(
+                                stringResource(R.string.diagnostic_stability_notice),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    stringResource(
-                                        R.string.diagnostic_communication_test
-                                    )
+                                    stringResource(R.string.mask_addresses_export),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Switch(
+                                    checked = maskAddresses,
+                                    onCheckedChange = { maskAddresses = it }
                                 )
                             }
-                            OutlinedButton(
-                                onClick = { onCopyText(diagnosticText) },
-                                enabled = uiState.devices.isNotEmpty()
-                            ) {
-                                Text(stringResource(R.string.copy_diagnostic))
-                            }
-                            OutlinedButton(
-                                onClick = { onShareText(diagnosticText) },
-                                enabled = uiState.devices.isNotEmpty()
-                            ) {
-                                Text(stringResource(R.string.export_diagnostic))
+                            if (uiState.devices.isNotEmpty()) {
+                                CompactActionGroup(
+                                    actions = listOf(
+                                        CompactAction(
+                                            label = stringResource(R.string.copy_diagnostic),
+                                            icon = Icons.Filled.Info,
+                                            onClick = { onCopyText(diagnosticText) }
+                                        ),
+                                        CompactAction(
+                                            label = stringResource(R.string.export_diagnostic),
+                                            icon = Icons.Filled.Share,
+                                            onClick = { onShareText(diagnosticText) }
+                                        ),
+                                        CompactAction(
+                                            label = stringResource(R.string.clear_results),
+                                            icon = Icons.Filled.Close,
+                                            onClick = onClearResults
+                                        )
+                                    )
+                                )
                             }
                         }
                     }
@@ -226,6 +249,130 @@ fun ScannerScreen(
         }
     }
 }
+
+@Composable
+private fun DiagnosticStatusCard(
+    uiState: ScannerUiState,
+    onRequestPermissions: () -> Unit,
+    onOpenBluetoothSettings: () -> Unit,
+    onStartScan: () -> Unit,
+    onStopScan: () -> Unit
+) {
+    val status = when {
+        uiState.isScanning -> DiagnosticStatus(
+            state = stringResource(R.string.diagnostic_state_scanning),
+            description = stringResource(R.string.diagnostic_state_scanning_body),
+            tone = StatusCardTone.NEUTRAL,
+            action = CompactAction(
+                label = stringResource(R.string.stop_scan),
+                icon = Icons.Filled.Close,
+                onClick = onStopScan
+            )
+        )
+        uiState.permissionStatus != BlePermissionStatus.GRANTED -> DiagnosticStatus(
+            state = stringResource(R.string.diagnostic_state_permission),
+            description = stringResource(
+                if (uiState.permissionStatus == BlePermissionStatus.PERMANENTLY_DENIED) {
+                    R.string.diagnostic_state_permission_permanent_body
+                } else {
+                    R.string.diagnostic_state_permission_body
+                }
+            ),
+            tone = StatusCardTone.ATTENTION,
+            action = CompactAction(
+                label = stringResource(R.string.request_permissions),
+                icon = Icons.Filled.Settings,
+                onClick = onRequestPermissions,
+                primary = true
+            )
+        )
+        uiState.bluetoothSupport == BleSupportStatus.BLUETOOTH_UNAVAILABLE ||
+            uiState.bluetoothSupport == BleSupportStatus.BLE_UNSUPPORTED -> DiagnosticStatus(
+            state = stringResource(R.string.diagnostic_state_unavailable),
+            description = stringResource(R.string.diagnostic_state_unavailable_body),
+            tone = StatusCardTone.ERROR,
+            action = null
+        )
+        uiState.bluetoothPower == BluetoothPowerStatus.OFF -> DiagnosticStatus(
+            state = stringResource(R.string.diagnostic_state_bluetooth_off),
+            description = stringResource(R.string.diagnostic_state_bluetooth_off_body),
+            tone = StatusCardTone.ATTENTION,
+            action = CompactAction(
+                label = stringResource(R.string.open_bluetooth_settings),
+                icon = Icons.Filled.Settings,
+                onClick = onOpenBluetoothSettings,
+                primary = true
+            )
+        )
+        uiState.error != null -> DiagnosticStatus(
+            state = stringResource(R.string.diagnostic_state_failure),
+            description = errorText(uiState.error),
+            tone = StatusCardTone.ERROR,
+            action = CompactAction(
+                label = stringResource(R.string.diagnostic_check_connection),
+                icon = Icons.Filled.Refresh,
+                onClick = onStartScan,
+                primary = true
+            )
+        )
+        uiState.bluetoothSupport == BleSupportStatus.UNKNOWN ||
+            uiState.bluetoothPower == BluetoothPowerStatus.UNKNOWN -> DiagnosticStatus(
+            state = stringResource(R.string.diagnostic_state_checking),
+            description = stringResource(R.string.diagnostic_state_checking_body),
+            tone = StatusCardTone.NEUTRAL,
+            action = null
+        )
+        !uiState.hasCompletedScan -> DiagnosticStatus(
+            state = stringResource(R.string.diagnostic_state_ready),
+            description = stringResource(R.string.diagnostic_state_ready_body),
+            tone = StatusCardTone.NEUTRAL,
+            action = CompactAction(
+                label = stringResource(R.string.diagnostic_check_connection),
+                icon = Icons.Filled.PlayArrow,
+                onClick = onStartScan,
+                primary = true
+            )
+        )
+        uiState.devices.isEmpty() -> DiagnosticStatus(
+            state = stringResource(R.string.diagnostic_state_no_devices),
+            description = stringResource(R.string.diagnostic_state_no_devices_body),
+            tone = StatusCardTone.ATTENTION,
+            action = CompactAction(
+                label = stringResource(R.string.diagnostic_check_connection),
+                icon = Icons.Filled.PlayArrow,
+                onClick = onStartScan,
+                primary = true
+            )
+        )
+        else -> DiagnosticStatus(
+            state = stringResource(R.string.diagnostic_state_ok),
+            description = stringResource(R.string.diagnostic_state_ok_body),
+            tone = StatusCardTone.POSITIVE,
+            action = CompactAction(
+                label = stringResource(R.string.diagnostic_check_connection),
+                icon = Icons.Filled.Refresh,
+                onClick = onStartScan,
+                primary = true
+            )
+        )
+    }
+
+    StatusCard(
+        title = stringResource(R.string.diagnostic_status_heading),
+        state = status.state,
+        description = status.description,
+        icon = Icons.Filled.Info,
+        action = status.action,
+        tone = status.tone
+    )
+}
+
+private data class DiagnosticStatus(
+    val state: String,
+    val description: String,
+    val tone: StatusCardTone,
+    val action: CompactAction?
+)
 
 @Composable
 private fun EnvironmentStatusCard(uiState: ScannerUiState) {
@@ -321,60 +468,6 @@ private fun ScanStatus(uiState: ScannerUiState) {
 }
 
 @Composable
-private fun ActionButtons(
-    uiState: ScannerUiState,
-    onRequestPermissions: () -> Unit,
-    onStartScan: () -> Unit,
-    onStopScan: () -> Unit,
-    onClearResults: () -> Unit
-) {
-    val canStart = uiState.permissionStatus == BlePermissionStatus.GRANTED &&
-        uiState.bluetoothSupport == BleSupportStatus.SUPPORTED &&
-        uiState.bluetoothPower == BluetoothPowerStatus.ON &&
-        !uiState.isScanning
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        OutlinedButton(
-            onClick = onRequestPermissions,
-            enabled = uiState.permissionStatus != BlePermissionStatus.GRANTED &&
-                !uiState.isScanning,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(stringResource(R.string.request_permissions))
-        }
-
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Button(
-                onClick = onStartScan,
-                enabled = canStart,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(stringResource(R.string.start_scan))
-            }
-            Spacer(Modifier.width(8.dp))
-            OutlinedButton(
-                onClick = onStopScan,
-                enabled = uiState.isScanning,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(stringResource(R.string.stop_scan))
-            }
-        }
-
-        TextButton(
-            onClick = onClearResults,
-            enabled = uiState.devices.isNotEmpty(),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(stringResource(R.string.clear_results))
-        }
-    }
-}
-
-@Composable
 private fun ErrorCard(
     error: BleScanError,
     onDismiss: () -> Unit
@@ -388,15 +481,22 @@ private fun ErrorCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
+                text = stringResource(R.string.diagnostic_error_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
                 text = errorText(error),
                 style = MaterialTheme.typography.bodyMedium
             )
-            TextButton(
-                onClick = onDismiss,
+            CompactActionButton(
+                CompactAction(
+                    label = stringResource(R.string.dismiss_error),
+                    icon = Icons.Filled.Close,
+                    onClick = onDismiss
+                ),
                 modifier = Modifier.align(Alignment.End)
-            ) {
-                Text(stringResource(R.string.dismiss_error))
-            }
+            )
         }
     }
 }
@@ -408,8 +508,7 @@ private fun DeviceCard(
     onCopyText: (String) -> Unit
 ) {
     var expanded by rememberSaveable(device.address) { mutableStateOf(false) }
-    val time = DateFormat.getTimeInstance(DateFormat.MEDIUM)
-        .format(Date(device.lastSeenEpochMillis))
+    val time = formatScanTime(device.lastSeenEpochMillis)
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -475,15 +574,19 @@ private fun DeviceCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            TextButton(onClick = { expanded = !expanded }) {
-                Text(
-                    if (expanded) {
-                        stringResource(R.string.hide_technical_data)
-                    } else {
-                        stringResource(R.string.show_technical_data)
-                    }
+            CompactActionButton(
+                CompactAction(
+                    label = stringResource(
+                        if (expanded) {
+                            R.string.hide_technical_data
+                        } else {
+                            R.string.show_technical_data
+                        }
+                    ),
+                    icon = Icons.AutoMirrored.Filled.ArrowForward,
+                    onClick = { expanded = !expanded }
                 )
-            }
+            )
 
             if (expanded) {
                 TechnicalDeviceData(
@@ -534,12 +637,14 @@ private fun TechnicalDeviceData(
 
     SelectionContainer {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlinedButton(
-                onClick = { onCopyText(rawRecord) },
-                enabled = rawRecord != unavailable
-            ) {
-                Text(stringResource(R.string.copy_raw_payload))
-            }
+            CompactActionButton(
+                CompactAction(
+                    label = stringResource(R.string.copy_raw_payload),
+                    icon = Icons.Filled.Info,
+                    onClick = { onCopyText(rawRecord) },
+                    enabled = rawRecord != unavailable
+                )
+            )
             TechnicalValue(
                 label = stringResource(R.string.technical_service_uuids),
                 value = serviceUuids
@@ -622,8 +727,7 @@ private fun AdvertisementHistory(history: List<BleDeviceResult>) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         visibleHistory.forEach { result ->
-            val time = DateFormat.getTimeInstance(DateFormat.MEDIUM)
-                .format(Date(result.lastSeenEpochMillis))
+            val time = formatScanTime(result.lastSeenEpochMillis)
             val rawRecord = result.rawScanRecord
                 ?.let(BleHexFormatter::format)
                 ?: stringResource(R.string.not_available)
@@ -658,6 +762,13 @@ private fun AdvertisementHistory(history: List<BleDeviceResult>) {
         }
     }
 }
+
+private fun formatScanTime(epochMillis: Long): String =
+    BrazilianDateTimeFormatter.time(
+        Instant.ofEpochMilli(epochMillis)
+            .atZone(java.time.ZoneId.systemDefault())
+            .toLocalTime()
+    )
 
 @Composable
 private fun TechnicalValue(label: String, value: String) {

@@ -11,7 +11,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class KnownScaleItem(
@@ -26,33 +29,41 @@ data class DevicesUiState(
     val hasError: Boolean = false
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class DevicesViewModel(private val container: AppContainer) : ViewModel() {
     private val pendingForget = MutableStateFlow<ScaleDevice?>(null)
+    private val refreshTrigger = MutableStateFlow(0)
 
     val uiState: StateFlow<DevicesUiState> =
-        combine(
-            container.scaleDeviceRepository.observeAll(),
-            container.measurementRepository.observeAll(),
-            pendingForget
-        ) { devices, measurements, pending ->
-            val usage = measurements
-                .filter { it.deviceId != null }
-                .groupBy { it.deviceId }
-                .mapValues { (_, values) -> values.maxOf { it.measuredAt } }
-            DevicesUiState(
-                isLoading = false,
-                devices = devices.map { KnownScaleItem(it, usage[it.id]) },
-                pendingForget = pending
-            )
+        refreshTrigger.flatMapLatest {
+            combine(
+                container.scaleDeviceRepository.observeAll(),
+                container.measurementRepository.observeAll(),
+                pendingForget
+            ) { devices, measurements, pending ->
+                val usage = measurements
+                    .filter { it.deviceId != null }
+                    .groupBy { it.deviceId }
+                    .mapValues { (_, values) -> values.maxOf { it.measuredAt } }
+                DevicesUiState(
+                    isLoading = false,
+                    devices = devices.map { KnownScaleItem(it, usage[it.id]) },
+                    pendingForget = pending
+                )
             }
             .catch {
                 emit(DevicesUiState(isLoading = false, hasError = true))
             }
-            .stateIn(
-                viewModelScope,
-                SharingStarted.WhileSubscribed(5_000),
-                DevicesUiState()
-            )
+        }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            DevicesUiState()
+        )
+
+    fun retry() {
+        refreshTrigger.update { it + 1 }
+    }
 
     fun setPreferred(device: ScaleDevice) {
         viewModelScope.launch {
