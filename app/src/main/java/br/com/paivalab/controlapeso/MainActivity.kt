@@ -4,7 +4,10 @@ import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.content.pm.PackageInstaller
 import android.os.Build
 import android.os.Bundle
@@ -277,10 +280,20 @@ class MainActivity : ComponentActivity() {
                 }
                 if (confirmationIntent == null) {
                     finishPackageInstallation(success = false)
+                } else if (!isTrustedPackageInstallerIntent(confirmationIntent)) {
+                    finishPackageInstallation(success = false)
                 } else {
-                    // The immutable callback is explicit and was accepted only after
-                    // matching the active PackageInstaller session and random nonce.
-                    startActivity(confirmationIntent)
+                    val resolved = packageManager.resolveActivity(
+                        confirmationIntent,
+                        PackageManager.MATCH_DEFAULT_ONLY
+                    )
+                    val explicitIntent = Intent(confirmationIntent).setComponent(
+                        ComponentName(
+                            requireNotNull(resolved).activityInfo.packageName,
+                            resolved.activityInfo.name
+                        )
+                    )
+                    startActivity(explicitIntent)
                 }
             }
             PackageInstaller.STATUS_SUCCESS -> finishPackageInstallation(success = true)
@@ -292,6 +305,17 @@ class MainActivity : ComponentActivity() {
         activePackageInstallSessionId = null
         activePackageInstallNonce = null
         releaseUpdateViewModel.onInstallationFinished(success)
+    }
+
+    private fun isTrustedPackageInstallerIntent(intent: Intent): Boolean {
+        val resolved = packageManager.resolveActivity(
+            intent,
+            PackageManager.MATCH_DEFAULT_ONLY
+        ) ?: return false
+        val activityInfo = resolved.activityInfo ?: return false
+        val applicationInfo = activityInfo.applicationInfo ?: return false
+        return activityInfo.packageName != packageName &&
+            applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0
     }
 
     companion object {
