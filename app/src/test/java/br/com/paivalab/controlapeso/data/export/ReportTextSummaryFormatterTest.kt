@@ -28,9 +28,9 @@ class ReportTextSummaryFormatterTest {
 
         val text = ReportTextSummaryFormatter.format(data, WeightUnit.KILOGRAM)
 
-        assertTrue(text.contains("Inicial: 75,0 kg"))
-        assertTrue(text.contains("Final: 74,0 kg"))
-        assertTrue(text.contains("Variação: -1,0 kg"))
+        assertTrue(text.contains("Inicial: 75,00 kg"))
+        assertTrue(text.contains("Final: 74,00 kg"))
+        assertTrue(text.contains("Variação: -1,00 kg"))
         assertTrue(text.contains("não é diagnóstico médico"))
     }
 

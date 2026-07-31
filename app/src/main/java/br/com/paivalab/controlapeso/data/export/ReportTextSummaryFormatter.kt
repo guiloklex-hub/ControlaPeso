@@ -47,8 +47,8 @@ object ReportTextSummaryFormatter {
     }
 
     private fun number(value: Double) =
-        String.format(Locale.forLanguageTag("pt-BR"), "%.1f", value)
+        String.format(Locale.forLanguageTag("pt-BR"), "%.2f", value)
 
     private fun signedNumber(value: Double) =
-        String.format(Locale.forLanguageTag("pt-BR"), "%+.1f", value)
+        String.format(Locale.forLanguageTag("pt-BR"), "%+.2f", value)
 }

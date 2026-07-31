@@ -6,6 +6,17 @@ import org.junit.Test
 
 class WeightUnitTest {
     @Test
+    fun formatKeepsTwoDecimalPlaces() {
+        val formatted = WeightUnit.KILOGRAM.formatFromKilograms(101.45)
+
+        assertTrue(formatted == "101,45 kg" || formatted == "101.45 kg")
+        assertTrue(
+            WeightUnit.KILOGRAM.formatInputFromKilograms(101.45) == "101,45" ||
+                WeightUnit.KILOGRAM.formatInputFromKilograms(101.45) == "101.45"
+        )
+    }
+
+    @Test
     fun convertInputKeepsThePhysicalWeightWhenUnitChanges() {
         val pounds = WeightUnit.POUND.convertInput("75,4", WeightUnit.KILOGRAM)
         val kilograms = pounds.replace(',', '.').toDouble()

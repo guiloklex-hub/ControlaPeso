@@ -32,6 +32,8 @@ Nenhuma alteração registrada ainda.
 
 - Migração Room v1→v2 permite medições sem perfil sem perder histórico ou
   payload bruto.
+- Pesos exibidos em kg/lb mantêm duas casas decimais, inclusive em metas e
+  relatórios, sem alterar a precisão persistida.
 - Ações clicáveis não criam alvos pais concorrentes e mesclam semântica para
   tecnologias assistivas.
 - A rota de demonstração permanece indisponível em builds release.

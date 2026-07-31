@@ -298,10 +298,10 @@ class PdfReportService {
     }
 
     private fun number(value: Double): String =
-        String.format(PORTUGUESE_BRAZIL, "%.1f", value)
+        String.format(PORTUGUESE_BRAZIL, "%.2f", value)
 
     private fun signedNumber(value: Double): String =
-        String.format(PORTUGUESE_BRAZIL, "%+.1f", value)
+        String.format(PORTUGUESE_BRAZIL, "%+.2f", value)
 
     companion object {
         private const val PAGE_WIDTH = 595f

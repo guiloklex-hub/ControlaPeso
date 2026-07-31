@@ -18,6 +18,6 @@ class GoalWeightInputFormatterTest {
 
     @Test
     fun kilogramsRemainKilograms() {
-        assertEquals("75.0", formatGoalWeightInput(75.0, WeightUnit.KILOGRAM).replace(',', '.'))
+        assertEquals("75.00", formatGoalWeightInput(75.0, WeightUnit.KILOGRAM).replace(',', '.'))
     }
 }
