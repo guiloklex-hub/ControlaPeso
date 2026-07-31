@@ -2,10 +2,10 @@ package br.com.paivalab.controlapeso.data.export
 
 import br.com.paivalab.controlapeso.domain.model.WeightMeasurement
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
+import br.com.paivalab.controlapeso.core.time.BrazilianDateTimeFormatter
 import java.nio.charset.StandardCharsets
 import java.time.ZoneId
 import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 class CsvExportService {
@@ -13,7 +13,7 @@ class CsvExportService {
         data: ReportData,
         unit: WeightUnit,
         includeNotes: Boolean,
-        includeAdditionalMetrics: Boolean
+        @Suppress("UNUSED_PARAMETER") includeAdditionalMetrics: Boolean
     ): ByteArray {
         val columns = buildList {
             addAll(
@@ -31,20 +31,6 @@ class CsvExportService {
                 )
             )
             if (includeNotes) add("observacao")
-            if (includeAdditionalMetrics) {
-                addAll(
-                    listOf(
-                        "impedancia_1",
-                        "impedancia_2",
-                        "gordura_corporal",
-                        "massa_muscular_${unit.symbol}",
-                        "agua_corporal",
-                        "massa_ossea_${unit.symbol}",
-                        "gordura_visceral",
-                        "idade_metabolica"
-                    )
-                )
-            }
         }
         val csv = buildString {
             append(columns.joinToString(SEPARATOR))
@@ -56,7 +42,7 @@ class CsvExportService {
                         profileName = data.profile.name,
                         unit = unit,
                         includeNotes = includeNotes,
-                        includeAdditionalMetrics = includeAdditionalMetrics
+                        includeAdditionalMetrics = false
                     ).joinToString(SEPARATOR, transform = ::escape)
                 )
                 append("\r\n")
@@ -70,7 +56,7 @@ class CsvExportService {
         profileName: String,
         unit: WeightUnit,
         includeNotes: Boolean,
-        includeAdditionalMetrics: Boolean
+        @Suppress("UNUSED_PARAMETER") includeAdditionalMetrics: Boolean
     ): List<String> = buildList {
         val offset = measurement.zoneOffsetSeconds
             ?.let(ZoneOffset::ofTotalSeconds)
@@ -80,30 +66,17 @@ class CsvExportService {
         add(safeSpreadsheetText(profileName))
         add(decimal(unit.fromKilograms(measurement.weightKg)))
         add(unit.symbol)
-        add(local.toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE))
-        add(local.toLocalTime().format(DateTimeFormatter.ISO_LOCAL_TIME))
+        add(BrazilianDateTimeFormatter.date(local.toLocalDate()))
+        add(BrazilianDateTimeFormatter.time(local.toLocalTime()))
         add(offset.id)
         add(measurement.source.name)
         add(safeSpreadsheetText(measurement.deviceName.orEmpty()))
         add(if (measurement.isStable) "sim" else "não")
         if (includeNotes) add(safeSpreadsheetText(measurement.note.orEmpty()))
-        if (includeAdditionalMetrics) {
-            add(nullableDecimal(measurement.impedanceOne))
-            add(nullableDecimal(measurement.impedanceTwo))
-            add(nullableDecimal(measurement.bodyFatPercent))
-            add(nullableDecimal(measurement.muscleMassKg?.let(unit::fromKilograms)))
-            add(nullableDecimal(measurement.bodyWaterPercent))
-            add(nullableDecimal(measurement.boneMassKg?.let(unit::fromKilograms)))
-            add(nullableDecimal(measurement.visceralFatLevel))
-            add(measurement.metabolicAge?.toString().orEmpty())
-        }
     }
 
     private fun decimal(value: Double): String =
         String.format(PORTUGUESE_BRAZIL, "%.2f", value)
-
-    private fun nullableDecimal(value: Double?): String =
-        value?.let(::decimal).orEmpty()
 
     private fun escape(value: String): String {
         if (

@@ -44,4 +44,35 @@ class EntityMappersTest {
         assertEquals("C0 68 28 8C", result.rawPayloadHex)
         assertNull(result.bodyFatPercent)
     }
+
+    @Test
+    fun measurementWithoutProfile_roundTrips() {
+        val now = Instant.parse("2026-07-27T21:30:00Z")
+        val original = WeightMeasurement(
+            id = "unassigned-measurement",
+            profileId = null,
+            weightKg = 75.0,
+            measuredAt = now,
+            zoneOffsetSeconds = -10_800,
+            source = MeasurementSource.MANUAL,
+            isStable = true,
+            deviceId = null,
+            deviceName = null,
+            deviceAddress = null,
+            note = null,
+            rawPayloadHex = null,
+            impedanceOne = null,
+            impedanceTwo = null,
+            bodyFatPercent = null,
+            muscleMassKg = null,
+            bodyWaterPercent = null,
+            boneMassKg = null,
+            visceralFatLevel = null,
+            metabolicAge = null,
+            createdAt = now,
+            updatedAt = now
+        )
+
+        assertEquals(original, original.toEntity().toDomain())
+    }
 }

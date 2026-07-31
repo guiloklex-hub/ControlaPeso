@@ -1,16 +1,22 @@
 package br.com.paivalab.controlapeso.ui.profiles
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -22,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
@@ -29,7 +36,11 @@ import br.com.paivalab.controlapeso.domain.model.Profile
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.ui.components.BrazilianDateTextField
 import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactAction
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactActionButton
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactActionGroup
 import br.com.paivalab.controlapeso.ui.designsystem.components.EmptyState
+import br.com.paivalab.controlapeso.ui.designsystem.components.MeasurementUnitSelector
 import br.com.paivalab.controlapeso.ui.designsystem.components.ProfileAvatar
 import br.com.paivalab.controlapeso.ui.designsystem.components.ResponsiveScreenList
 import br.com.paivalab.controlapeso.ui.designsystem.components.StatusPill
@@ -51,6 +62,9 @@ fun ProfilesScreen(
     onDismissDelete: () -> Unit,
     onConfirmDelete: () -> Unit,
     onExportBeforeDelete: () -> Unit,
+    onOpenHistory: () -> Unit = {},
+    onPickPhoto: () -> Unit = {},
+    onRemovePhoto: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     ResponsiveScreenList(modifier = modifier) {
@@ -61,22 +75,36 @@ fun ProfilesScreen(
             )
         }
         item {
-            Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.create_profile))
-            }
+            CompactActionGroup(
+                actions = listOf(
+                    CompactAction(
+                        label = stringResource(R.string.create_profile),
+                        icon = Icons.Filled.AddCircle,
+                        onClick = onCreate,
+                        primary = true
+                    )
+                )
+            )
         }
         if (state.profiles.isEmpty()) {
             item {
                 EmptyState(
                     title = stringResource(R.string.profiles_empty_title),
-                    body = stringResource(R.string.no_profiles),
-                    actionLabel = stringResource(R.string.create_profile),
-                    onAction = onCreate
+                    body = stringResource(R.string.no_profiles)
                 )
             }
         }
         items(state.profiles, key = Profile::id) { profile ->
-            ProfileCard(profile, onEdit, onSetActive, onDelete)
+            ProfileCard(
+                profile = profile,
+                measurementCount = state.measurementCounts[profile.id] ?: 0,
+                unassignedMeasurementCount = state.unassignedMeasurementCount,
+                photoPath = state.photoPaths[profile.id],
+                onEdit = onEdit,
+                onSetActive = onSetActive,
+                onDelete = onDelete,
+                onOpenHistory = onOpenHistory
+            )
         }
     }
 
@@ -91,6 +119,8 @@ fun ProfilesScreen(
             onHeightChange = onHeightChange,
             onBirthDateChange = onBirthDateChange,
             onUnitChange = onUnitChange,
+            onPickPhoto = onPickPhoto,
+            onRemovePhoto = onRemovePhoto,
             onSave = onSave
         )
     }
@@ -122,14 +152,18 @@ fun ProfilesScreen(
 @Composable
 private fun ProfileCard(
     profile: Profile,
+    measurementCount: Int,
+    unassignedMeasurementCount: Int,
+    photoPath: String?,
     onEdit: (Profile) -> Unit,
     onSetActive: (Profile) -> Unit,
-    onDelete: (Profile) -> Unit
+    onDelete: (Profile) -> Unit,
+    onOpenHistory: () -> Unit
 ) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onEdit(profile) },
+            .heightIn(min = ControlaPesoDesignSystem.sizes.minimumTouchTarget),
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
@@ -140,7 +174,11 @@ private fun ProfileCard(
             ),
             verticalAlignment = Alignment.Top
         ) {
-            ProfileAvatar(name = profile.name)
+            ProfileAvatar(
+                name = profile.name,
+                photoPath = photoPath,
+                avatarKey = profile.avatarKey
+            )
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(
@@ -175,17 +213,47 @@ private fun ProfileCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                Text(
+                    pluralStringResource(
+                        R.plurals.profile_measurement_count,
+                        measurementCount,
+                        measurementCount
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (!profile.isActive) {
-                        OutlinedButton(onClick = { onSetActive(profile) }) {
-                            Text(stringResource(R.string.make_active))
-                        }
+                        CompactActionButton(
+                            CompactAction(
+                                label = stringResource(R.string.make_active),
+                                icon = Icons.Filled.Check,
+                                onClick = { onSetActive(profile) }
+                            )
+                        )
                     }
-                    TextButton(onClick = { onEdit(profile) }) {
-                        Text(stringResource(R.string.edit))
-                    }
-                    TextButton(onClick = { onDelete(profile) }) {
-                        Text(stringResource(R.string.delete))
+                    CompactActionButton(
+                        CompactAction(
+                            label = stringResource(R.string.edit),
+                            icon = Icons.Filled.Edit,
+                            onClick = { onEdit(profile) },
+                            primary = true
+                        )
+                    )
+                    CompactActionButton(
+                        CompactAction(
+                            label = stringResource(R.string.delete),
+                            icon = Icons.Filled.Delete,
+                            onClick = { onDelete(profile) }
+                        )
+                    )
+                    if (unassignedMeasurementCount > 0) {
+                        CompactActionButton(
+                            CompactAction(
+                                label = stringResource(R.string.assign_unassigned_measurements),
+                                icon = Icons.Filled.AddCircle,
+                                onClick = onOpenHistory
+                            )
+                        )
                     }
                 }
             }
@@ -204,6 +272,8 @@ private fun ProfileDialog(
     onHeightChange: (String) -> Unit,
     onBirthDateChange: (String) -> Unit,
     onUnitChange: (WeightUnit) -> Unit,
+    onPickPhoto: () -> Unit,
+    onRemovePhoto: () -> Unit,
     onSave: () -> Unit
 ) {
     AlertDialog(
@@ -217,7 +287,12 @@ private fun ProfileDialog(
             )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 480.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 OutlinedTextField(
                     value = form.name,
                     onValueChange = onNameChange,
@@ -225,6 +300,52 @@ private fun ProfileDialog(
                     singleLine = true
                 )
                 Text(stringResource(R.string.avatar_label))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ProfileAvatar(
+                        name = form.name.ifBlank { "?" },
+                        photoPath = form.existingPhotoPath.takeIf {
+                            form.photoUri == null && !form.removePhoto
+                        },
+                        photoUri = form.photoUri,
+                        avatarKey = form.avatarKey
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        OutlinedButton(onClick = onPickPhoto) {
+                            Text(
+                                stringResource(
+                                    if (form.existingPhotoPath != null || form.photoUri != null) {
+                                        R.string.change_profile_photo
+                                    } else {
+                                        R.string.use_profile_photo
+                                    }
+                                )
+                            )
+                        }
+                        if (form.photoUri != null) {
+                            Text(
+                                stringResource(R.string.profile_photo_selected),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (
+                            (form.existingPhotoPath != null || form.photoUri != null) &&
+                            !form.removePhoto
+                        ) {
+                            TextButton(onClick = onRemovePhoto) {
+                                Text(stringResource(R.string.remove_profile_photo))
+                            }
+                        }
+                        if (form.removePhoto) {
+                            Text(
+                                stringResource(R.string.profile_photo_will_remove),
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(
                         "ocean" to R.string.avatar_ocean,
@@ -235,7 +356,10 @@ private fun ProfileDialog(
                         FilterChip(
                             selected = form.avatarKey == avatar,
                             onClick = { onAvatarChange(avatar) },
-                            label = { Text(stringResource(label)) }
+                            label = { Text(stringResource(label)) },
+                            modifier = Modifier.heightIn(
+                                min = ControlaPesoDesignSystem.sizes.minimumTouchTarget
+                            )
                         )
                     }
                 }
@@ -251,15 +375,20 @@ private fun ProfileDialog(
                     onValueChange = onBirthDateChange,
                     label = stringResource(R.string.birth_date_optional)
                 )
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    WeightUnit.entries.forEach { unit ->
-                        FilterChip(
-                            selected = form.unit == unit,
-                            onClick = { onUnitChange(unit) },
-                            label = { Text(unit.symbol) }
-                        )
-                    }
-                }
+                MeasurementUnitSelector(
+                    selected = form.unit,
+                    onSelected = onUnitChange,
+                    title = stringResource(R.string.profile_unit_title),
+                    description = stringResource(R.string.profile_unit_body),
+                    unitLabels = mapOf(
+                        WeightUnit.KILOGRAM to stringResource(R.string.unit_kilogram_label),
+                        WeightUnit.POUND to stringResource(R.string.unit_pound_label)
+                    ),
+                    unitDescriptions = mapOf(
+                        WeightUnit.KILOGRAM to stringResource(R.string.unit_kilogram_description),
+                        WeightUnit.POUND to stringResource(R.string.unit_pound_description)
+                    )
+                )
                 error?.let {
                     Text(
                         profileErrorText(it),

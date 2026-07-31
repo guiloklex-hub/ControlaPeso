@@ -4,7 +4,7 @@ import java.time.Instant
 
 data class WeightMeasurement(
     val id: String,
-    val profileId: String,
+    val profileId: String?,
     val weightKg: Double,
     val measuredAt: Instant,
     val zoneOffsetSeconds: Int?,

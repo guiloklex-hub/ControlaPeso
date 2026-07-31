@@ -40,6 +40,16 @@ Get-FileHash .\ControlaPeso-vX.Y.Z-universal.apk -Algorithm SHA256
 
 Compare o hash mostrado com a linha correspondente de `SHA256SUMS.txt`.
 
+## Atualização dentro do app
+
+Ao iniciar, o aplicativo pode oferecer um release estável futuro publicado no
+repositório oficial. Ele mostra o changelog do release, baixa somente o APK
+universal, valida a linha de `SHA256SUMS.txt`, package, assinatura e versão
+antes de passar o arquivo ao `PackageInstaller`. O Android continua exigindo a
+permissão de fonte desconhecida quando aplicável e a confirmação final da
+instalação. Consulte [Backup local e compartilhamento](LOCAL_BACKUP_AND_SHARING.md)
+para o fluxo e limites.
+
 ## Assinatura
 
 Artefatos de release são assinados por uma chave de assinatura do projeto.

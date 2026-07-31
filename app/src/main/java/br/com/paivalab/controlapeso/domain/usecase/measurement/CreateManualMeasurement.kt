@@ -89,12 +89,13 @@ class CreateManualMeasurement(
     private suspend fun createPendingGoalIfNeeded(measurement: WeightMeasurement) {
         val preferences = preferencesRepository.preferences.first()
         val targetKg = preferences.pendingGoalTargetKg ?: return
-        if (goalRepository.observeForProfile(measurement.profileId).first().isEmpty()) {
+        val profileId = measurement.profileId ?: return
+        if (goalRepository.observeForProfile(profileId).first().isEmpty()) {
             val now = clock.now()
             goalRepository.insert(
                 WeightGoal(
                     id = idGenerator.newId(),
-                    profileId = measurement.profileId,
+                    profileId = profileId,
                     startWeightKg = measurement.weightKg,
                     targetWeightKg = targetKg,
                     startDate = MeasurementTimeFormatter.localDate(

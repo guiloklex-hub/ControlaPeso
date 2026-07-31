@@ -3,6 +3,7 @@ package br.com.paivalab.controlapeso.data.backup
 import br.com.paivalab.controlapeso.data.preferences.ChartSize
 import br.com.paivalab.controlapeso.data.preferences.HistoryGrouping
 import br.com.paivalab.controlapeso.data.preferences.HistoryPeriod
+import br.com.paivalab.controlapeso.data.preferences.LocalBackupFrequency
 import br.com.paivalab.controlapeso.data.preferences.ThemeMode
 import br.com.paivalab.controlapeso.data.preferences.VisualEffects
 import br.com.paivalab.controlapeso.domain.model.GoalStatus
@@ -52,7 +53,7 @@ object BackupValidator {
         }
         document.measurements.forEach { measurement ->
             validateUuid(measurement.id, "medição", errors)
-            if (measurement.profileId !in profileIds) {
+            if (measurement.profileId != null && measurement.profileId !in profileIds) {
                 errors += "Medição ${measurement.id} referencia perfil inexistente."
             }
             if (measurement.deviceId != null && measurement.deviceId !in deviceIds) {
@@ -126,6 +127,11 @@ object BackupValidator {
         validateEnum<HistoryPeriod>(value.defaultHistoryPeriod, "período", errors)
         validateEnum<HistoryGrouping>(value.historyGrouping, "agrupamento", errors)
         validateEnum<ChartSize>(value.chartSize, "tamanho do gráfico", errors)
+        validateEnum<LocalBackupFrequency>(
+            value.localBackupFrequency,
+            "frequência do backup local",
+            errors
+        )
         if (value.reminderDaysMask !in 0..0b1111111) errors += "Dias do lembrete inválidos."
         if (value.reminderHour !in 0..23) errors += "Hora do lembrete inválida."
         if (value.reminderMinute !in 0..59) errors += "Minuto do lembrete inválido."

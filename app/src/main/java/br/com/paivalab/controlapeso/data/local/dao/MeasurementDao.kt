@@ -22,6 +22,12 @@ interface MeasurementDao {
     fun observeForProfile(profileId: String): Flow<List<WeightMeasurementEntity>>
 
     @Query(
+        "SELECT * FROM weight_measurements WHERE profileId IS NULL " +
+            "ORDER BY measuredAt DESC, id DESC"
+    )
+    fun observeUnassigned(): Flow<List<WeightMeasurementEntity>>
+
+    @Query(
         "SELECT * FROM weight_measurements WHERE profileId = :profileId " +
             "AND measuredAt >= :startInclusive AND measuredAt < :endExclusive " +
             "ORDER BY measuredAt ASC, id ASC"
@@ -42,14 +48,15 @@ interface MeasurementDao {
     suspend fun getAll(): List<WeightMeasurementEntity>
 
     @Query(
-        "SELECT * FROM weight_measurements WHERE profileId = :profileId " +
+        "SELECT * FROM weight_measurements WHERE " +
+            "((:profileId IS NULL AND profileId IS NULL) OR profileId = :profileId) " +
             "AND measuredAt BETWEEN :windowStart AND :windowEnd " +
             "AND ABS(weightKg - :weightKg) <= :toleranceKg " +
             "AND (:deviceAddress IS NULL OR deviceAddress = :deviceAddress) " +
             "ORDER BY ABS(measuredAt - :centerTime), id LIMIT 1"
     )
     suspend fun findProbableDuplicate(
-        profileId: String,
+        profileId: String?,
         weightKg: Double,
         toleranceKg: Double,
         centerTime: Instant,
@@ -57,6 +64,16 @@ interface MeasurementDao {
         windowEnd: Instant,
         deviceAddress: String?
     ): WeightMeasurementEntity?
+
+    @Query(
+        "UPDATE weight_measurements SET profileId = :profileId, " +
+            "updatedAt = :updatedAt WHERE id IN (:measurementIds) AND profileId IS NULL"
+    )
+    suspend fun assignToProfile(
+        measurementIds: List<String>,
+        profileId: String,
+        updatedAt: Instant
+    ): Int
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(entity: WeightMeasurementEntity)

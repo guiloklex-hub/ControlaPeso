@@ -2,11 +2,19 @@ package br.com.paivalab.controlapeso.ui.measurement.detail
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -14,24 +22,26 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
 import br.com.paivalab.controlapeso.core.time.MeasurementTimeFormatter
-import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactAction
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactActionButton
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactActionGroup
 import br.com.paivalab.controlapeso.ui.designsystem.components.EmptyState
 import br.com.paivalab.controlapeso.ui.designsystem.components.HeroMetricCard
+import br.com.paivalab.controlapeso.ui.designsystem.components.ProfileAvatar
 import br.com.paivalab.controlapeso.ui.designsystem.components.ResponsiveScreenList
 import br.com.paivalab.controlapeso.ui.history.sourceText
-import java.time.format.FormatStyle
 
 @Composable
 fun MeasurementDetailScreen(
@@ -43,6 +53,10 @@ fun MeasurementDetailScreen(
     onUndoDelete: () -> Unit,
     onConsumeDeleteNotice: () -> Unit,
     onShare: () -> Unit,
+    onRequestAssignProfile: () -> Unit = {},
+    onDismissAssignProfile: () -> Unit = {},
+    onAssignProfile: (String) -> Unit = {},
+    onNavigateBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -65,7 +79,7 @@ fun MeasurementDetailScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         val measurement = state.measurement
-        val unit = state.profile?.preferredWeightUnit ?: WeightUnit.KILOGRAM
+        val unit = state.unit
         ResponsiveScreenList(
             modifier = Modifier.padding(innerPadding),
             maxContentWidth = 760.dp
@@ -80,7 +94,10 @@ fun MeasurementDetailScreen(
                 item {
                     EmptyState(
                         title = stringResource(R.string.measurement_not_found_title),
-                        body = stringResource(R.string.measurement_not_found)
+                        body = stringResource(R.string.measurement_not_found),
+                        actionLabel = stringResource(R.string.back),
+                        onAction = onNavigateBack,
+                        actionIcon = Icons.AutoMirrored.Filled.ArrowBack
                     )
                 }
             } else {
@@ -88,25 +105,43 @@ fun MeasurementDetailScreen(
                     HeroMetricCard(
                         label = stringResource(R.string.measurement_weight_label),
                         value = unit.formatFromKilograms(measurement.weightKg),
-                        supportingText = MeasurementTimeFormatter.dateTime(
-                            measurement,
-                            dateStyle = FormatStyle.FULL
-                        ),
+                        supportingText = MeasurementTimeFormatter.dateTime(measurement),
                         modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(
-                                ControlaPesoDesignSystem.spacing.xs
-                            )
                         ) {
-                            Text(
-                                stringResource(
-                                    R.string.detail_profile,
-                                    state.profile?.name
-                                        ?: stringResource(R.string.not_available)
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(
+                                    ControlaPesoDesignSystem.spacing.xs
                                 )
-                            )
-                            Text(
+                            ) {
+                                val profileName = state.profile?.name
+                                    ?: stringResource(R.string.unassigned_profile)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(
+                                        ControlaPesoDesignSystem.spacing.sm
+                                    )
+                                ) {
+                                    ProfileAvatar(
+                                        name = profileName,
+                                        contentDescription = profileName,
+                                        photoPath = state.profilePhotoPath,
+                                        avatarKey = state.profileAvatarKey
+                                    )
+                                    Column {
+                                        Text(
+                                            profileName,
+                                            style = MaterialTheme.typography.titleMedium
+                                        )
+                                        Text(
+                                            stringResource(
+                                                R.string.detail_profile,
+                                                profileName
+                                            ),
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
+                                Text(
                                 stringResource(
                                     R.string.detail_source,
                                     sourceText(measurement.source)
@@ -142,21 +177,38 @@ fun MeasurementDetailScreen(
                         }
                     }
                 }
-                item {
-                    AdditionalMetricsCard(state, unit)
+                if (measurement.profileId == null && state.profiles.isNotEmpty()) {
+                    item {
+                        CompactActionButton(
+                            CompactAction(
+                                label = stringResource(R.string.assign_profile),
+                                icon = Icons.Filled.Person,
+                                onClick = onRequestAssignProfile
+                            )
+                        )
+                    }
                 }
                 item {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { onEdit(measurement.id) }) {
-                            Text(stringResource(R.string.edit))
-                        }
-                        OutlinedButton(onClick = onShare) {
-                            Text(stringResource(R.string.share))
-                        }
-                        TextButton(onClick = onRequestDelete) {
-                            Text(stringResource(R.string.delete))
-                        }
-                    }
+                    CompactActionGroup(
+                        actions = listOf(
+                            CompactAction(
+                                label = stringResource(R.string.edit),
+                                icon = Icons.Filled.Edit,
+                                onClick = { onEdit(measurement.id) },
+                                primary = true
+                            ),
+                            CompactAction(
+                                label = stringResource(R.string.share),
+                                icon = Icons.Filled.Share,
+                                onClick = onShare
+                            ),
+                            CompactAction(
+                                label = stringResource(R.string.delete),
+                                icon = Icons.Filled.Delete,
+                                onClick = onRequestDelete
+                            )
+                        )
+                    )
                 }
             }
         }
@@ -179,65 +231,40 @@ fun MeasurementDetailScreen(
             }
         )
     }
-}
 
-@Composable
-private fun AdditionalMetricsCard(
-    state: MeasurementDetailUiState,
-    unit: WeightUnit
-) {
-    val measurement = state.measurement ?: return
-    val values = listOfNotNull(
-        measurement.impedanceOne?.let {
-            stringResource(R.string.metric_impedance_one, it)
-        },
-        measurement.impedanceTwo?.let {
-            stringResource(R.string.metric_impedance_two, it)
-        },
-        measurement.bodyFatPercent?.let {
-            stringResource(R.string.metric_body_fat, it)
-        },
-        measurement.muscleMassKg?.let {
-            stringResource(
-                R.string.metric_muscle_mass,
-                unit.fromKilograms(it),
-                unit.symbol
-            )
-        },
-        measurement.bodyWaterPercent?.let {
-            stringResource(R.string.metric_body_water, it)
-        },
-        measurement.boneMassKg?.let {
-            stringResource(
-                R.string.metric_bone_mass,
-                unit.fromKilograms(it),
-                unit.symbol
-            )
-        },
-        measurement.visceralFatLevel?.let {
-            stringResource(R.string.metric_visceral_fat, it)
-        },
-        measurement.metabolicAge?.let {
-            stringResource(R.string.metric_metabolic_age, it)
-        }
-    )
-    if (values.isEmpty()) return
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow
-    ) {
-        Column(
-            modifier = Modifier.padding(ControlaPesoDesignSystem.spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(
-                ControlaPesoDesignSystem.spacing.xs
-            )
-        ) {
-            Text(
-                stringResource(R.string.additional_metrics),
-                style = MaterialTheme.typography.titleMedium
-            )
-            values.forEach { Text(it) }
-        }
+    if (state.assignProfileDialogVisible) {
+        AlertDialog(
+            onDismissRequest = onDismissAssignProfile,
+            title = { Text(stringResource(R.string.assign_profile_title)) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(stringResource(R.string.assign_profile_body))
+                    state.profiles.forEach { profile ->
+                        OutlinedButton(
+                            onClick = { onAssignProfile(profile.id) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(profile.name)
+                        }
+                    }
+                    if (state.assignmentError) {
+                        Text(
+                            stringResource(R.string.assignment_error_body),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onDismissAssignProfile) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
     }
 }

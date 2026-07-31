@@ -40,7 +40,6 @@ object PreviewStates {
             PreviewGoals.active,
             PreviewMeasurements.history.last().weightKg
         ),
-        bmi = 27.8,
         currentHour = 9
     )
 
@@ -48,8 +47,7 @@ object PreviewStates {
         measurements = emptyList(),
         statistics = null,
         activeGoal = null,
-        goalProgress = null,
-        bmi = null
+        goalProgress = null
     )
 
     val history = HistoryUiState(
@@ -72,6 +70,13 @@ object PreviewStates {
         status = LiveMeasurementStatus.WAITING_FOR_WEIGHT,
         isScanning = true,
         secondsRemaining = 12
+    )
+
+    val liveFirstMeasurement = liveWaiting.copy(
+        preferences = preferences.copy(confirmedBleUnit = null),
+        isScanning = false,
+        status = LiveMeasurementStatus.READY,
+        secondsRemaining = 0
     )
 
     val liveVarying = liveWaiting.copy(
@@ -128,7 +133,7 @@ object PreviewStates {
         selectedProfileId = PreviewProfiles.primary.id,
         weightText = "78,4",
         unit = WeightUnit.KILOGRAM,
-        dateText = "28-07-2026",
+        dateText = "28072026",
         timeText = "07:30",
         note = "Texto longo de teste para conferir o reflow do formulário."
     )

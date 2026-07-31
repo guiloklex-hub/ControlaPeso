@@ -61,6 +61,20 @@ class BackupValidatorTest {
         assertTrue(result.errors.any { it.contains("fuso horário inválido") })
     }
 
+    @Test
+    fun measurementWithoutProfile_isValidAndKeepsRawPayload() {
+        val document = validDocument().copy(
+            measurements = validDocument().measurements.map {
+                it.copy(profileId = null)
+            }
+        )
+
+        val result = BackupValidator.validate(document)
+
+        assertTrue(result.isValid)
+        assertEquals("C0 68 28 8C", document.measurements.single().rawPayloadHex)
+    }
+
     private fun validDocument(): BackupDocument {
         val profileId = "11111111-1111-4111-8111-111111111111"
         val measurementId = "22222222-2222-4222-8222-222222222222"

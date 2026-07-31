@@ -36,8 +36,8 @@ class HistoryDateRangeCalculatorTest {
             HistoryDateRangeCalculator.bounds(
                 HistoryFilters(
                     range = HistoryRange.CUSTOM,
-                    customStartText = "30-07-2026",
-                    customEndText = "20-07-2026"
+                    customStartText = "30/07/2026",
+                    customEndText = "20/07/2026"
                 ),
                 today,
                 zone
@@ -58,8 +58,8 @@ class HistoryDateRangeCalculatorTest {
             HistoryDateRangeCalculator.bounds(
                 HistoryFilters(
                     range = HistoryRange.CUSTOM,
-                    customStartText = "20-07-2026",
-                    customEndText = "27-07-2026"
+                    customStartText = "20/07/2026",
+                    customEndText = "27/07/2026"
                 ),
                 today,
                 zone

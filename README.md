@@ -24,13 +24,15 @@
 
 ## Por que existe
 
-Controla Peso é uma alternativa Android nativa para registrar peso sem conta,
-Internet, anúncios, analytics, telemetria ou servidor. Ele recebe anúncios BLE
+Controla Peso é uma alternativa Android nativa para registrar peso localmente,
+sem backend, anúncios, analytics ou telemetria. Ele recebe anúncios BLE
 observados em balanças compatíveis com o fluxo do OKOK International e também
 permite registros manuais.
 
 Os dados permanecem no dispositivo. Exportação, relatório, backup e Health
-Connect só ocorrem após uma ação explícita da pessoa usuária.
+Connect só ocorrem após uma ação explícita da pessoa usuária. A consulta de
+release usa GitHub ao abrir o app; cópias de backup só saem pelo Sharesheet
+Android, após ação explícita.
 
 ## Recursos
 
@@ -39,6 +41,8 @@ Connect só ocorrem após uma ação explícita da pessoa usuária.
 - Histórico local Room, múltiplos perfis, metas, gráficos e tendências.
 - Registro manual com máscara de data brasileira `DD-MM-AAAA`.
 - Relatórios PDF/CSV, backup JSON, Sharesheet e SAF.
+- Atualização opcional por release estável do GitHub, com checksum e confirmação Android.
+- Backup JSON local automático opcional e compartilhamento manual pelo Android.
 - Health Connect opcional e somente para escrita de peso.
 - Tema claro, escuro, sistema, cores dinâmicas e efeitos visuais reduzidos.
 - Layout adaptável para celulares, tablets, dobra, paisagem e tela dividida.
@@ -105,12 +109,13 @@ Compose UI → ViewModels/StateFlow → casos de uso → repositories
                                            └── BLE scanner → parser → detector de estabilidade
 ```
 
-O scanner BLE e os parsers não dependem de Composables. O app não declara a
-permissão `INTERNET`; não há backend nem SDK proprietário.
+O scanner BLE e os parsers não dependem de Composables. A rede é limitada ao
+endpoint público de releases; não há backend nem SDK de nuvem proprietário.
 
 - [Arquitetura](docs/ARCHITECTURE.md)
 - [Protocolo e evidências BLE](docs/BLE_PROTOCOL_AND_CONNECTION.md)
 - [Privacidade](docs/PRIVACY.md)
+- [Backup local e compartilhamento](docs/LOCAL_BACKUP_AND_SHARING.md)
 - [Diagnóstico BLE](docs/BLE_DIAGNOSTIC.md)
 - [Testes](docs/TESTING.md)
 - [Distribuição e releases](docs/DISTRIBUTION.md)

@@ -4,15 +4,32 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -23,8 +40,12 @@ import br.com.paivalab.controlapeso.domain.model.GoalStatus
 import br.com.paivalab.controlapeso.domain.model.WeightGoal
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.ui.components.BrazilianDateTextField
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactAction
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactActionButton
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactActionGroup
 import br.com.paivalab.controlapeso.ui.designsystem.components.EmptyState
 import br.com.paivalab.controlapeso.ui.designsystem.components.GoalProgressCard
+import br.com.paivalab.controlapeso.ui.designsystem.components.ProfileContextHeader
 import br.com.paivalab.controlapeso.ui.designsystem.components.ResponsiveScreenList
 
 @Composable
@@ -41,10 +62,24 @@ fun GoalsScreen(
     onSave: () -> Unit,
     onDismissDelete: () -> Unit,
     onConfirmDelete: () -> Unit,
+    onSwitchProfile: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val unit = state.profile?.preferredWeightUnit
+    val unit = state.unit
+    var expandedGoalMenuId by rememberSaveable { mutableStateOf<String?>(null) }
     ResponsiveScreenList(modifier = modifier) {
+        item {
+            ProfileContextHeader(
+                name = state.profile?.name,
+                unitSymbol = unit.symbol,
+                noProfileLabel = stringResource(R.string.dashboard_no_profile_label),
+                unitLabel = stringResource(R.string.dashboard_unit_label),
+                switchLabel = stringResource(R.string.switch_profile),
+                onSwitchProfile = if (state.profile != null) onSwitchProfile else null,
+                photoPath = state.profilePhotoPath,
+                avatarKey = state.profile?.avatarKey
+            )
+        }
         item {
             Text(
                 stringResource(R.string.goals_title),
@@ -57,13 +92,17 @@ fun GoalsScreen(
             )
         }
         item {
-            Button(
-                onClick = onCreate,
-                enabled = state.profile != null,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(stringResource(R.string.create_goal))
-            }
+            CompactActionGroup(
+                actions = listOf(
+                    CompactAction(
+                        label = stringResource(R.string.create_goal),
+                        icon = Icons.Filled.AddCircle,
+                        onClick = onCreate,
+                        primary = true,
+                        enabled = state.profile != null
+                    )
+                )
+            )
         }
         if (state.profile == null) {
             item {
@@ -76,9 +115,7 @@ fun GoalsScreen(
             item {
                 EmptyState(
                     title = stringResource(R.string.goals_empty_title),
-                    body = stringResource(R.string.no_goals),
-                    actionLabel = stringResource(R.string.create_goal),
-                    onAction = onCreate
+                    body = stringResource(R.string.no_goals)
                 )
             }
         }
@@ -134,30 +171,74 @@ fun GoalsScreen(
                 supportingText = details,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                TextButton(onClick = { onEdit(goal) }) {
-                    Text(stringResource(R.string.edit))
-                }
-                when (goal.status) {
-                    GoalStatus.ACTIVE -> {
-                        TextButton(onClick = { onSetStatus(goal, GoalStatus.PAUSED) }) {
-                            Text(stringResource(R.string.pause_goal))
-                        }
-                        TextButton(onClick = {
-                            onSetStatus(goal, GoalStatus.COMPLETED)
-                        }) {
-                            Text(stringResource(R.string.complete_goal))
+                CompactActionButton(
+                    CompactAction(
+                        label = stringResource(R.string.edit),
+                        icon = Icons.Filled.Edit,
+                        onClick = { onEdit(goal) },
+                        primary = true
+                    )
+                )
+                androidx.compose.foundation.layout.Box {
+                    IconButton(
+                        onClick = { expandedGoalMenuId = goal.id },
+                        modifier = Modifier.heightIn(min = 48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.MoreVert,
+                            contentDescription = stringResource(R.string.goal_more_actions)
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = expandedGoalMenuId == goal.id,
+                        onDismissRequest = { expandedGoalMenuId = null }
+                    ) {
+                        when (goal.status) {
+                            GoalStatus.ACTIVE -> {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.pause_goal)) },
+                                    leadingIcon = {
+                                        Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        expandedGoalMenuId = null
+                                        onSetStatus(goal, GoalStatus.PAUSED)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.complete_goal)) },
+                                    leadingIcon = {
+                                        Icon(Icons.Filled.Check, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        expandedGoalMenuId = null
+                                        onSetStatus(goal, GoalStatus.COMPLETED)
+                                    }
+                                )
+                            }
+                            GoalStatus.PAUSED,
+                            GoalStatus.COMPLETED -> {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.reactivate_goal)) },
+                                    leadingIcon = {
+                                        Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        expandedGoalMenuId = null
+                                        onSetStatus(goal, GoalStatus.ACTIVE)
+                                    }
+                                )
+                            }
                         }
                     }
-                    GoalStatus.PAUSED,
-                    GoalStatus.COMPLETED -> {
-                        TextButton(onClick = { onSetStatus(goal, GoalStatus.ACTIVE) }) {
-                            Text(stringResource(R.string.reactivate_goal))
-                        }
-                    }
                 }
-                TextButton(onClick = { onDelete(goal) }) {
-                    Text(stringResource(R.string.delete))
-                }
+                CompactActionButton(
+                    CompactAction(
+                        label = stringResource(R.string.delete),
+                        icon = Icons.Filled.Delete,
+                        onClick = { onDelete(goal) }
+                    )
+                )
             }
         }
     }
@@ -174,7 +255,12 @@ fun GoalsScreen(
                 )
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     OutlinedTextField(
                         value = form.startWeightText,
                         onValueChange = onStartChange,

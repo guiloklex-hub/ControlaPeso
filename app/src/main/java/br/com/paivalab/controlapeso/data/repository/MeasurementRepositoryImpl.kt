@@ -20,6 +20,9 @@ class MeasurementRepositoryImpl(
     override fun observeForProfile(profileId: String): Flow<List<WeightMeasurement>> =
         dao.observeForProfile(profileId).map { entities -> entities.map { it.toDomain() } }
 
+    override fun observeUnassigned(): Flow<List<WeightMeasurement>> =
+        dao.observeUnassigned().map { entities -> entities.map { it.toDomain() } }
+
     override fun observeInRange(
         profileId: String,
         startInclusive: Instant,
@@ -55,8 +58,18 @@ class MeasurementRepositoryImpl(
 
     override suspend fun deleteDemoData(): Int = dao.deleteDemoData()
 
-    override suspend fun findProbableDuplicate(
+    override suspend fun assignToProfile(
+        measurementIds: List<String>,
         profileId: String,
+        updatedAt: Instant
+    ): Int = if (measurementIds.isEmpty()) {
+        0
+    } else {
+        dao.assignToProfile(measurementIds, profileId, updatedAt)
+    }
+
+    override suspend fun findProbableDuplicate(
+        profileId: String?,
         weightKg: Double,
         measuredAt: Instant,
         deviceAddress: String?,

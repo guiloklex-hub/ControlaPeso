@@ -11,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -22,6 +23,10 @@ class ControlaPesoApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Build the optional network stack away from the main thread; it never gates onboarding.
+        applicationScope.launch {
+            container.releaseUpdateCoordinator.check(applicationScope)
+        }
         val cleanup = PeriodicWorkRequestBuilder<ReportCleanupWorker>(
             1,
             TimeUnit.DAYS
@@ -44,6 +49,16 @@ class ControlaPesoApplication : Application() {
                 .distinctUntilChanged { old, new -> old.first == new.first }
                 .collect { (_, preferences) ->
                     container.reminderScheduler.update(preferences)
+                }
+        }
+        applicationScope.launch {
+            container.preferencesRepository.preferences
+                .map { it.localBackupFrequency }
+                .distinctUntilChanged()
+                .collect {
+                    container.localBackupScheduler.update(
+                        container.preferencesRepository.preferences.first()
+                    )
                 }
         }
         applicationScope.launch {

@@ -34,7 +34,7 @@ data class BackupProfile(
 @Serializable
 data class BackupMeasurement(
     val id: String,
-    val profileId: String,
+    val profileId: String?,
     val weightKg: Double,
     val measuredAt: String,
     val zoneOffsetSeconds: Int?,
@@ -101,5 +101,6 @@ data class BackupPreferences(
     val remindersEnabled: Boolean,
     val reminderDaysMask: Int,
     val reminderHour: Int,
-    val reminderMinute: Int
+    val reminderMinute: Int,
+    val localBackupFrequency: String = "OFF"
 )

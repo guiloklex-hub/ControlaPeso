@@ -27,7 +27,12 @@ import br.com.paivalab.controlapeso.domain.repository.ScaleDeviceRepository
 import br.com.paivalab.controlapeso.core.time.AppClock
 import java.time.Instant
 import java.time.LocalDate
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 
 enum class RestoreMode {
     MERGE,
@@ -105,26 +110,31 @@ class JsonBackupManager(
             return BackupRestoreResult.Invalid(decoded.errors)
         }
         val document = (decoded as BackupDecodeResult.Valid).document
-        return runCatching {
-            val safetyBackup = if (mode == RestoreMode.REPLACE) {
-                exportJson(clock.now())
-            } else {
-                null
+        currentCoroutineContext().ensureActive()
+        return try {
+            withContext(NonCancellable) {
+                val safetyBackup = if (mode == RestoreMode.REPLACE) {
+                    exportJson(clock.now())
+                } else {
+                    null
+                }
+                val imported = if (mode == RestoreMode.REPLACE) {
+                    replace(document)
+                    document.measurements.size
+                } else {
+                    merge(document)
+                }
+                preferencesRepository.restoreExportable(document.preferences.toPreferences())
+                BackupRestoreResult.Success(
+                    mode = mode,
+                    importedMeasurements = imported,
+                    skippedMeasurements = document.measurements.size - imported,
+                    safetyBackupJson = safetyBackup
+                )
             }
-            val imported = if (mode == RestoreMode.REPLACE) {
-                replace(document)
-                document.measurements.size
-            } else {
-                merge(document)
-            }
-            preferencesRepository.restoreExportable(document.preferences.toPreferences())
-            BackupRestoreResult.Success(
-                mode = mode,
-                importedMeasurements = imported,
-                skippedMeasurements = document.measurements.size - imported,
-                safetyBackupJson = safetyBackup
-            )
-        }.getOrElse { failure ->
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (failure: Throwable) {
             BackupRestoreResult.Failure(
                 failure.message ?: "Falha ao restaurar o backup."
             )
@@ -324,7 +334,8 @@ private fun AppPreferences.toBackup() = BackupPreferences(
     remindersEnabled = remindersEnabled,
     reminderDaysMask = reminderDaysMask,
     reminderHour = reminderHour,
-    reminderMinute = reminderMinute
+    reminderMinute = reminderMinute,
+    localBackupFrequency = localBackupFrequency.name
 )
 
 private fun BackupProfile.toEntity() = ProfileEntity(
@@ -409,5 +420,11 @@ private fun BackupPreferences.toPreferences() = AppPreferences(
     remindersEnabled = remindersEnabled,
     reminderDaysMask = reminderDaysMask,
     reminderHour = reminderHour,
-    reminderMinute = reminderMinute
+    reminderMinute = reminderMinute,
+    localBackupFrequency = runCatching {
+        br.com.paivalab.controlapeso.data.preferences.LocalBackupFrequency
+            .valueOf(localBackupFrequency)
+    }.getOrDefault(
+        br.com.paivalab.controlapeso.data.preferences.LocalBackupFrequency.OFF
+    )
 )

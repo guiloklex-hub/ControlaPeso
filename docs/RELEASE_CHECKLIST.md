@@ -1,5 +1,15 @@
 # Checklist de release
 
+## Release candidato v1.1.0 — 31/07/2026
+
+- [x] `versionName = 1.1.0` e `versionCode = 2`
+- [x] changelog preparado e tag futura alinhada ao workflow
+- [x] backup local e Sharesheet sem OAuth/Drive direto
+- [x] testes, lint, debug, release e instrumentados executados localmente
+- [ ] PR revisado e mesclado na `main`
+- [ ] tag `v1.1.0` criada somente após o merge
+- [ ] workflow assinado concluído e assets/hash/certificado conferidos
+
 ## Checkpoint de distribuição v1.0.0 — 28/07/2026
 
 - [x] `clean test lint assembleDebug assembleRelease bundleRelease`
@@ -58,10 +68,14 @@ que a limpeza do runner não afete os dados de uso manual.
 - [ ] schema Room exportado e migration presente se versão > 1
 - [ ] APK release não possui rota visível de demonstração
 - [ ] nenhuma credencial, token ou SDK proprietário
+- [ ] `signingReport` mostra configuração release e certificado esperado
+- [ ] assets de uma tag existente não são sobrescritos
+- [ ] rollback planejado como nova versão com `versionCode` maior
 
 ## Manifest e privacidade
 
-- [ ] sem permissão `INTERNET`
+- [ ] `INTERNET` documentada e limitada ao GitHub; sem analytics ou backend
+- [ ] `REQUEST_INSTALL_PACKAGES` só entrega APK verificado ao Android, sem instalação silenciosa
 - [ ] BLE por versão e sem permissões extras
 - [ ] notificações solicitadas só ao ativar lembrete
 - [ ] Health Connect solicitado só após ação
@@ -78,6 +92,8 @@ que a limpeza do runner não afete os dados de uso manual.
 - [ ] esquecer balança mantém histórico
 - [ ] excluir tudo exige duas confirmações
 - [ ] dados demo visíveis e removíveis, somente debug
+- [ ] update estável mostra changelog e valida checksum/package/assinatura/versão
+- [ ] backup local cria/restaura e compartilhar abre o Sharesheet sem upload automático
 
 ## UI
 
@@ -94,6 +110,7 @@ que a limpeza do runner não afete os dados de uso manual.
 - [ ] Sharesheet e SAF
 - [ ] Health Connect sem duplicata
 - [ ] lembrete abre Medir sem scan automático
+- [ ] Sharesheet/SAF, fontes desconhecidas e confirmação de APK
 
 Itens físicos pendentes devem ser declarados na entrega; não devem ser
 marcados como aprovados apenas porque o APK compila.

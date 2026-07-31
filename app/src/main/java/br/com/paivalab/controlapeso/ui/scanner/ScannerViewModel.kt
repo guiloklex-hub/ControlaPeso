@@ -69,7 +69,12 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
 
     fun startScan() {
         refreshEnvironment()
-        _uiState.update { it.copy(error = null) }
+        _uiState.update {
+            it.copy(
+                error = null,
+                hasCompletedScan = false
+            )
+        }
         scanner.start()
     }
 
@@ -83,7 +88,8 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
         _uiState.update {
             it.copy(
                 devices = emptyList(),
-                advertisementHistory = emptyMap()
+                advertisementHistory = emptyMap(),
+                hasCompletedScan = false
             )
         }
     }
@@ -204,6 +210,7 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
                 _uiState.update {
                     it.copy(
                         isScanning = false,
+                        hasCompletedScan = true,
                         secondsRemaining = 0,
                         scanPhase = null
                     )
@@ -214,6 +221,7 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
                 _uiState.update {
                     it.copy(
                         isScanning = false,
+                        hasCompletedScan = true,
                         secondsRemaining = 0,
                         scanPhase = null,
                         error = scanState.error

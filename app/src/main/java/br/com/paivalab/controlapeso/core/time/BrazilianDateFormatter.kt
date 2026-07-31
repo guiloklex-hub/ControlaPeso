@@ -4,15 +4,16 @@ import java.time.DateTimeException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.ResolverStyle
+import java.util.Locale
 
 /**
  * Mantém a entrada de datas do app no padrão brasileiro, sem expor o formato
  * ISO usado internamente pelo domínio, banco e backups.
  */
 object BrazilianDateFormatter {
-    const val PATTERN: String = "dd-MM-uuuu"
+    const val PATTERN: String = BrazilianDateTimeFormatter.DATE_PATTERN
 
-    private val formatter = DateTimeFormatter.ofPattern(PATTERN)
+    private val formatter = DateTimeFormatter.ofPattern(PATTERN, Locale.ROOT)
         .withResolverStyle(ResolverStyle.STRICT)
 
     fun format(date: LocalDate): String = date.format(formatter)
@@ -31,12 +32,16 @@ object BrazilianDateFormatter {
 
     fun parse(value: String): LocalDate {
         val trimmed = value.trim()
-        val normalized = if (
-            trimmed.length == MAX_DIGITS && trimmed.all { it.isDigit() }
-        ) {
-            maskDigits(trimmed)
-        } else {
-            trimmed
+        val isoDate = parseIsoOrNull(trimmed)
+        val normalized = when {
+            trimmed.length == MAX_DIGITS && trimmed.all { it.isDigit() } ->
+                maskDigits(trimmed)
+            isoDate != null -> BrazilianDateTimeFormatter.date(isoDate)
+            else -> {
+                // Keep accepting the previous separator in programmatic input,
+                // while every field now renders the slash-based contract.
+                trimmed.replace('-', '/')
+            }
         }
         return LocalDate.parse(normalized, formatter)
     }
@@ -48,9 +53,10 @@ object BrazilianDateFormatter {
     }
 
     /**
-     * Aplica a máscara DD-MM-AAAA enquanto a pessoa digita. Colagens ISO
+     * Aplica a máscara DD/MM/AAAA enquanto a pessoa digita. Colagens ISO
      * completas continuam sendo convertidas para facilitar a transição da UI
-     * anterior, mas validação aceita apenas o formato brasileiro exibido.
+     * anterior; parsing também tolera o separador anterior em valores
+     * programáticos, sem alterar o formato exibido.
      */
     fun mask(value: String): String {
         return maskDigits(inputDigits(value))
@@ -59,8 +65,8 @@ object BrazilianDateFormatter {
     private fun maskDigits(digits: String): String {
         return when (digits.length) {
             0, 1, 2 -> digits
-            3, 4 -> "${digits.take(2)}-${digits.drop(2)}"
-            else -> "${digits.take(2)}-${digits.substring(2, 4)}-${digits.drop(4)}"
+            3, 4 -> "${digits.take(2)}/${digits.drop(2)}"
+            else -> "${digits.take(2)}/${digits.substring(2, 4)}/${digits.drop(4)}"
         }
     }
 

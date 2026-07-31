@@ -17,10 +17,10 @@ foi confirmado nessa sessão; esses itens continuam pendentes.
 | BLE | Bluetooth desligado durante scan | telefone | Pendente |
 | BLE | permissão negada e permanente | API 30 e API 31+ | Pendente |
 | BLE | variante sem `neverForLocation` visível | aparelho/variante afetada | Pendente |
-| Data | digitar e validar `DD-MM-AAAA` | Samsung SM-S908E/API 36 | Validado: medição manual, filtro de histórico e meta aceitaram dígitos sequenciais e exibiram a máscara correta |
+| Data | digitar e validar `DD/MM/AAAA` | Samsung SM-S908E/API 36 | Validado: medição manual, filtro de histórico e meta aceitaram dígitos sequenciais e exibiram a máscara correta |
 | Navegação | aba Medir retorna à tela raiz | Samsung SM-S908E/API 36 | Validado: formulário manual → Histórico → Medir retornou a “Registrar peso”, sem restaurar o formulário |
 | Perfis | criar, ativar e excluir perfil de teste | Samsung SM-S908E/API 36 | Validado com `PerfilTeste`; o perfil ativo voltou para `Teste_Debug` antes da exclusão |
-| Metas | prazo, pausar e reativar | Samsung SM-S908E/API 36 | Validado: prazo salvo e exibido como `28-12-2026`; pausa e reativação persistiram na tela |
+| Metas | prazo, pausar e reativar | Samsung SM-S908E/API 36 | Validado: prazo salvo e exibido como `28/12/2026`; pausa e reativação persistiram na tela |
 | Persistência | reiniciar processo mantém histórico | telefone/emulador | Pendente no fluxo manual; repositories também passaram em teste instrumentado |
 | Relatório | gerar arquivos localmente | Samsung SM-S908E/API 36 | Validado: PDF, CSV e JSON foram gerados para os dados de teste; abertura externa, compartilhamento e SAF continuam pendentes |
 | Relatório | PDF abre e tabela não corta | leitor externo | Pendente |

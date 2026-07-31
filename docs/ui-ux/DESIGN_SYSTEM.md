@@ -1,6 +1,6 @@
 # Design system UI — ControlaPeso
 
-Atualizado em 28/07/2026. A direção escolhida é **Calm Health**, vencedora da
+Atualizado em 29/07/2026. A direção escolhida é **Calm Health**, vencedora da
 matriz registrada em `DESIGN_DIRECTIONS.md`.
 
 ## Princípios
@@ -57,6 +57,9 @@ abreviação não reduz o nome acessível.
 | `HeroMetricCard` | Último peso ou valor dominante. |
 | `MetricTile` | Estatística secundária. |
 | `StatusPill` / `TrendBadge` | Estado textual curto e tendência neutra. |
+| `StatusCard` | Estado contextual com ícone, texto e uma ação acessível. |
+| `DataOriginBadge` | Origem explícita de uma medição, sem alterar o dado persistido. |
+| `MeasurementUnitSelector` | Seleção visual e semântica de kg/lb em formulários. |
 | `GoalProgressCard` | Progresso de meta com resumo textual e ações refluíveis. |
 | `PrimaryActionCard` / `SecondaryActionCard` | Hierarquia explícita de ação. |
 | `EmptyState`, `LoadingState`, `ErrorState` | Estados humanos e consistentes. |

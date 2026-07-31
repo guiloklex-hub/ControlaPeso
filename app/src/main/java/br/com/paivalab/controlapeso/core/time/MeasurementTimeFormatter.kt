@@ -5,9 +5,6 @@ import java.time.DateTimeException
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.util.Locale
 
 /**
  * Exibe a hora local que foi registrada com a medição. A troca posterior do
@@ -16,22 +13,19 @@ import java.util.Locale
 object MeasurementTimeFormatter {
     fun dateTime(
         measurement: WeightMeasurement,
-        dateStyle: FormatStyle = FormatStyle.MEDIUM,
-        timeStyle: FormatStyle = FormatStyle.SHORT,
-        locale: Locale = Locale.getDefault(),
         fallbackZone: ZoneId = ZoneId.systemDefault()
-    ): String = DateTimeFormatter.ofLocalizedDateTime(dateStyle, timeStyle)
-        .withLocale(locale)
-        .format(measurement.measuredAt.atZone(recordedZone(measurement, fallbackZone)))
+    ): String = BrazilianDateTimeFormatter.dateTime(
+        measurement.measuredAt,
+        recordedZone(measurement, fallbackZone)
+    )
 
     fun date(
         measurement: WeightMeasurement,
-        style: FormatStyle = FormatStyle.MEDIUM,
-        locale: Locale = Locale.getDefault(),
         fallbackZone: ZoneId = ZoneId.systemDefault()
-    ): String = DateTimeFormatter.ofLocalizedDate(style)
-        .withLocale(locale)
-        .format(measurement.measuredAt.atZone(recordedZone(measurement, fallbackZone)))
+    ): String = BrazilianDateTimeFormatter.date(
+        measurement.measuredAt,
+        recordedZone(measurement, fallbackZone)
+    )
 
     fun localDate(
         measurement: WeightMeasurement,

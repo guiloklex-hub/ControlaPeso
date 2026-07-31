@@ -1,9 +1,9 @@
 package br.com.paivalab.controlapeso.data.export
 
+import br.com.paivalab.controlapeso.BuildConfig
+import br.com.paivalab.controlapeso.core.time.BrazilianDateTimeFormatter
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.domain.model.MeasurementSource
-import java.text.DateFormat
-import java.util.Date
 import java.util.Locale
 
 object ReportTextSummaryFormatter {
@@ -13,7 +13,9 @@ object ReportTextSummaryFormatter {
             appendLine("Controla Peso")
             appendLine("Resumo de ${data.profile.name}")
             appendLine("${data.measurements.size} medições")
-            if (data.measurements.any { it.source == MeasurementSource.DEMO }) {
+            if (BuildConfig.DEBUG && data.measurements.any {
+                    it.source == MeasurementSource.DEMO
+                }) {
                 appendLine("ATENÇÃO: inclui dados falsos de demonstração.")
             }
             if (statistics != null) {
@@ -37,8 +39,7 @@ object ReportTextSummaryFormatter {
             }
             append(
                 "Gerado em " +
-                    DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
-                        .format(Date.from(data.generatedAt))
+                    BrazilianDateTimeFormatter.dateTime(data.generatedAt)
             )
             appendLine()
             append("Relatório informativo; não é diagnóstico médico.")

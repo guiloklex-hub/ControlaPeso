@@ -74,13 +74,16 @@ Depois, `connectedAndroidTest` executou 19/19 testes pela variante isolada
 Cobertura unitária inclui:
 
 - hexadecimal, little-endian, parsers Chipsea e OKOK com capturas douradas;
-- formatação, máscara e validação estrita de datas `DD-MM-AAAA`;
+- formatação, máscara e validação estrita de datas `DD/MM/AAAA`;
 - estabilidade, leitura BLE, duplicidade e seleção segura de perfil;
-- kg/lb, validação manual, IMC, metas e estatísticas;
+- kg/lb, validação manual, metas e estatísticas; métricas derivadas permanecem
+  desativadas até validação do protocolo e decisão de produto;
 - intervalos de histórico, transição de horário de verão, offset persistido e
   redução de pontos;
 - mapeadores/conversores;
 - CSV, JSON, validação, limite de leitura, resumo, nomes e cache;
+- SemVer, parsing de release GitHub, ETag/offline, seleção de asset/checksum e
+  política de package, assinatura e versão do APK;
 - mapper Health Connect;
 - política de lembrete, mascaramento diagnóstico e ViewModel de perfis com
   relógio/dispatcher controlados.
@@ -136,3 +139,15 @@ payload/endereço/nota não aparecem.
 
 Em Android 13+, negar e conceder notificações ao ativar lembretes. Confirme
 texto neutro, dias, desativação e toque abrindo Medir sem iniciar scan.
+
+## Atualização e backup local
+
+Em aparelho físico, confirme no tema claro e escuro que o diálogo de update
+mostra changelog, que **Depois** vale só para a sessão e que uma fonte
+desconhecida bloqueada leva às configurações antes da confirmação Android.
+Use um release futuro assinado para o teste de instalação.
+
+Para o backup local, teste frequência desativada/diária/semanal/mensal, criação
+manual, compartilhamento cancelado e concluído pelo Sharesheet, importação,
+prévia, mesclar, substituir e exclusão. Nenhum desses cenários pode alterar
+dados locais antes da prévia válida de JSON.

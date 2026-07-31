@@ -25,6 +25,7 @@ import br.com.paivalab.controlapeso.worker.ReportCacheCleaner
 import java.io.ByteArrayOutputStream
 import java.time.Instant
 import java.time.ZoneId
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -73,7 +74,8 @@ data class ReportsUiState(
     val includeChart: Boolean = true,
     val includeTable: Boolean = true,
     val includeNotes: Boolean = true,
-    val includeAdditionalMetrics: Boolean = true,
+    /** Reserved until the scale protocol and domain policy validate metrics. */
+    val includeAdditionalMetrics: Boolean = false,
     val unit: WeightUnit = WeightUnit.KILOGRAM,
     val isWorking: Boolean = false,
     val generatedFile: SharedReportFile? = null,
@@ -93,18 +95,16 @@ class ReportsViewModel(
 
     val uiState: StateFlow<ReportsUiState> = combine(
         container.profileRepository.observeAll(),
+        container.preferencesRepository.preferences,
         local
-    ) { profiles, state ->
+    ) { profiles, preferences, state ->
         val selected = state.selectedProfileId
             ?: profiles.firstOrNull(Profile::isActive)?.id
             ?: profiles.firstOrNull()?.id
-        val preferredUnit = profiles.firstOrNull { it.id == selected }
-            ?.preferredWeightUnit
-            ?: state.unit
         state.copy(
             profiles = profiles,
             selectedProfileId = selected,
-            unit = if (state.selectedProfileId == null) preferredUnit else state.unit
+            unit = preferences.defaultWeightUnit
         )
     }.stateIn(
         viewModelScope,
@@ -113,11 +113,9 @@ class ReportsViewModel(
     )
 
     fun setProfile(id: String) {
-        val profile = uiState.value.profiles.firstOrNull { it.id == id }
         local.update {
             it.copy(
                 selectedProfileId = id,
-                unit = profile?.preferredWeightUnit ?: it.unit,
                 generatedFile = null,
                 generatedSummaryText = null,
                 error = null
@@ -135,9 +133,9 @@ class ReportsViewModel(
     fun setIncludeChart(value: Boolean) = update { copy(includeChart = value) }
     fun setIncludeTable(value: Boolean) = update { copy(includeTable = value) }
     fun setIncludeNotes(value: Boolean) = update { copy(includeNotes = value) }
+    @Suppress("UNUSED_PARAMETER")
     fun setIncludeAdditionalMetrics(value: Boolean) =
-        update { copy(includeAdditionalMetrics = value) }
-    fun setUnit(value: WeightUnit) = update { copy(unit = value) }
+        update { copy(includeAdditionalMetrics = false) }
     fun dismissMessage() = local.update {
         it.copy(message = null, error = null, validationErrors = emptyList())
     }
@@ -164,8 +162,8 @@ class ReportsViewModel(
             )
         }
         viewModelScope.launch {
-            runCatching {
-                withContext(Dispatchers.IO) {
+            try {
+                val artifact = withContext(Dispatchers.IO) {
                     if (state.format == ReportFormat.JSON) {
                         generateJson()
                     } else {
@@ -173,7 +171,6 @@ class ReportsViewModel(
                         generateReport(state, profile, bounds)
                     }
                 }
-            }.onSuccess { artifact ->
                 local.update {
                     it.copy(
                         isWorking = false,
@@ -182,7 +179,9 @@ class ReportsViewModel(
                         message = ReportsMessage.GENERATED
                     )
                 }
-            }.onFailure { failure ->
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (failure: Throwable) {
                 local.update {
                     it.copy(
                         isWorking = false,
@@ -200,14 +199,19 @@ class ReportsViewModel(
     fun saveGeneratedTo(uri: Uri) {
         val generated = uiState.value.generatedFile ?: return
         viewModelScope.launch {
-            val success = runCatching {
+            val success = try {
                 withContext(Dispatchers.IO) {
                     container.applicationContext.contentResolver.openOutputStream(uri)
                         ?.use { output ->
                             generated.file.inputStream().use { input -> input.copyTo(output) }
                         } ?: error("Destino indisponível")
                 }
-            }.isSuccess
+                true
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Throwable) {
+                false
+            }
             local.update {
                 if (success) {
                     it.copy(message = ReportsMessage.SAVED, error = null)
@@ -221,35 +225,30 @@ class ReportsViewModel(
     fun importFrom(uri: Uri) {
         local.update { it.copy(isWorking = true, error = null, validationErrors = emptyList()) }
         viewModelScope.launch {
-            val content = runCatching {
+            val content = try {
                 withContext(Dispatchers.IO) {
                     container.applicationContext.contentResolver.openInputStream(uri)
                         ?.bufferedReader(Charsets.UTF_8)
                         ?.use { LimitedTextReader.read(it) }
                         ?: error("Arquivo indisponível")
                 }
-            }.getOrElse {
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Throwable) {
                 local.update { state ->
                     state.copy(isWorking = false, error = ReportsError.FILE_READ_FAILED)
                 }
                 return@launch
             }
-            when (val result = container.jsonBackupManager.preview(content)) {
-                is BackupPreviewResult.Invalid -> local.update {
-                    it.copy(
-                        isWorking = false,
-                        validationErrors = result.errors,
-                        error = ReportsError.RESTORE_FAILED
-                    )
-                }
-                is BackupPreviewResult.Valid -> {
-                    pendingImportContent = content
-                    local.update {
-                        it.copy(isWorking = false, importPreview = result.preview)
-                    }
-                }
-            }
+            previewImportContent(content)
         }
+    }
+
+    /** Used by the Drive workflow after it has downloaded a remote JSON file. */
+    fun importContent(content: String) {
+        if (uiState.value.isWorking) return
+        local.update { it.copy(isWorking = true, error = null, validationErrors = emptyList()) }
+        viewModelScope.launch { previewImportContent(content) }
     }
 
     fun dismissImportPreview() {
@@ -261,25 +260,31 @@ class ReportsViewModel(
         val content = pendingImportContent ?: return
         local.update { it.copy(isWorking = true, importPreview = null) }
         viewModelScope.launch {
-            val operation = runCatching {
-                withContext(Dispatchers.IO) {
-                    val safetyFile = if (mode == RestoreMode.REPLACE) {
-                        val now = container.clock.now()
-                        val safetyJson = container.jsonBackupManager.exportJson(now)
-                        container.shareFileService.create(
-                            ReportFileNames.create(
-                                "backup-seguranca",
-                                "json",
-                                now
-                            ),
-                            JSON_MIME,
-                            safetyJson.toByteArray(Charsets.UTF_8)
-                        )
-                    } else {
-                        null
+            val operation: Result<Pair<BackupRestoreResult, SharedReportFile?>> = try {
+                Result.success(
+                    withContext(Dispatchers.IO) {
+                        val safetyFile = if (mode == RestoreMode.REPLACE) {
+                            val now = container.clock.now()
+                            val safetyJson = container.jsonBackupManager.exportJson(now)
+                            container.shareFileService.create(
+                                ReportFileNames.create(
+                                    "backup-seguranca",
+                                    "json",
+                                    now
+                                ),
+                                JSON_MIME,
+                                safetyJson.toByteArray(Charsets.UTF_8)
+                            )
+                        } else {
+                            null
+                        }
+                        container.jsonBackupManager.restore(content, mode) to safetyFile
                     }
-                    container.jsonBackupManager.restore(content, mode) to safetyFile
-                }
+                )
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (failure: Throwable) {
+                Result.failure(failure)
             }
             if (operation.isFailure) {
                 local.update {
@@ -344,6 +349,26 @@ class ReportsViewModel(
         }
     }
 
+    private suspend fun previewImportContent(content: String) {
+        when (val result = withContext(Dispatchers.IO) {
+            container.jsonBackupManager.preview(content)
+        }) {
+            is BackupPreviewResult.Invalid -> local.update {
+                it.copy(
+                    isWorking = false,
+                    validationErrors = result.errors,
+                    error = ReportsError.RESTORE_FAILED
+                )
+            }
+            is BackupPreviewResult.Valid -> {
+                pendingImportContent = content
+                local.update {
+                    it.copy(isWorking = false, importPreview = result.preview)
+                }
+            }
+        }
+    }
+
     private suspend fun generateJson(): GeneratedArtifact {
         val now = container.clock.now()
         val bytes = container.jsonBackupManager.exportJson(now).toByteArray(Charsets.UTF_8)
@@ -387,7 +412,7 @@ class ReportsViewModel(
             includeChart = state.includeChart,
             includeTable = state.includeTable,
             includeNotes = state.includeNotes,
-            includeAdditionalMetrics = state.includeAdditionalMetrics,
+            includeAdditionalMetrics = false,
             unit = state.unit
         )
         val (extension, mimeType, bytes) = when (state.format) {
@@ -398,7 +423,7 @@ class ReportsViewModel(
                     data,
                     state.unit,
                     state.includeNotes,
-                    state.includeAdditionalMetrics
+                    false
                 )
             )
             ReportFormat.PDF -> {

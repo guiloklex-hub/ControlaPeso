@@ -5,28 +5,43 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
-import br.com.paivalab.controlapeso.data.backup.RestoreMode
 import br.com.paivalab.controlapeso.data.export.ReportFormat
-import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.ui.components.BrazilianDateTextField
 import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactAction
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactActionButton
 import br.com.paivalab.controlapeso.ui.designsystem.components.ErrorState
 import br.com.paivalab.controlapeso.ui.designsystem.components.ResponsiveScreenList
 import br.com.paivalab.controlapeso.ui.designsystem.components.SettingsSection
@@ -42,19 +57,18 @@ fun ReportsScreen(
     onIncludeChartChange: (Boolean) -> Unit,
     onIncludeTableChange: (Boolean) -> Unit,
     onIncludeNotesChange: (Boolean) -> Unit,
-    onIncludeMetricsChange: (Boolean) -> Unit,
-    onUnitChange: (WeightUnit) -> Unit,
     onGenerate: () -> Unit,
     onShare: () -> Unit,
     onShareSummary: () -> Unit,
     onSaveFile: () -> Unit,
-    onImport: () -> Unit,
-    onClearTemporaryFiles: () -> Unit,
-    onDismissImport: () -> Unit,
-    onRestore: (RestoreMode) -> Unit,
+    onOpenDataBackup: () -> Unit,
     onDismissMessage: () -> Unit,
+    onOpenSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var showFormatDialog by rememberSaveable { mutableStateOf(false) }
+    var showPeriodDialog by rememberSaveable { mutableStateOf(false) }
+    var showContentDialog by rememberSaveable { mutableStateOf(false) }
     ResponsiveScreenList(
         modifier = modifier,
         maxContentWidth = 1_000.dp
@@ -75,15 +89,16 @@ fun ReportsScreen(
                 supportingText = stringResource(R.string.report_configuration_body)
             ) {
                     Text(stringResource(R.string.report_format), fontWeight = FontWeight.SemiBold)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ReportFormat.entries.forEach { format ->
-                            FilterChip(
-                                selected = state.format == format,
-                                onClick = { onFormatChange(format) },
-                                label = { Text(format.name) }
-                            )
-                        }
-                    }
+                    CompactActionButton(
+                        CompactAction(
+                            label = stringResource(
+                                R.string.report_format_selector,
+                                reportFormatText(state.format)
+                            ),
+                            icon = Icons.Filled.Info,
+                            onClick = { showFormatDialog = true }
+                        )
+                    )
                     if (state.format == ReportFormat.JSON) {
                         Text(stringResource(R.string.json_backup_all_data))
                     } else {
@@ -93,20 +108,24 @@ fun ReportsScreen(
                                 FilterChip(
                                     selected = state.selectedProfileId == profile.id,
                                     onClick = { onProfileChange(profile.id) },
-                                    label = { Text(profile.name) }
+                                    label = { Text(profile.name) },
+                                    modifier = Modifier.heightIn(
+                                        min = ControlaPesoDesignSystem.sizes.minimumTouchTarget
+                                    )
                                 )
                             }
                         }
                         Text(stringResource(R.string.report_period), fontWeight = FontWeight.SemiBold)
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ReportPeriod.entries.forEach { period ->
-                                FilterChip(
-                                    selected = state.period == period,
-                                    onClick = { onPeriodChange(period) },
-                                    label = { Text(reportPeriodText(period)) }
-                                )
-                            }
-                        }
+                        CompactActionButton(
+                            CompactAction(
+                                label = stringResource(
+                                    R.string.report_period_selector,
+                                    reportPeriodText(state.period)
+                                ),
+                                icon = Icons.Filled.Info,
+                                onClick = { showPeriodDialog = true }
+                            )
+                        )
                         if (state.period == ReportPeriod.CUSTOM) {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 BrazilianDateTextField(
@@ -123,51 +142,84 @@ fun ReportsScreen(
                                 )
                             }
                         }
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            WeightUnit.entries.forEach { unit ->
-                                FilterChip(
-                                    selected = state.unit == unit,
-                                    onClick = { onUnitChange(unit) },
-                                    label = { Text(unit.symbol) }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                stringResource(R.string.report_unit_global, state.unit.symbol),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+                            CompactActionButton(
+                                CompactAction(
+                                    label = stringResource(R.string.change_in_settings),
+                                    icon = Icons.Filled.Settings,
+                                    onClick = onOpenSettings
                                 )
-                            }
-                        }
-                        if (state.format == ReportFormat.PDF) {
-                            ReportSwitch(
-                                stringResource(R.string.include_chart),
-                                state.includeChart,
-                                onIncludeChartChange
-                            )
-                            ReportSwitch(
-                                stringResource(R.string.include_table),
-                                state.includeTable,
-                                onIncludeTableChange
                             )
                         }
-                        ReportSwitch(
-                            stringResource(R.string.include_notes),
-                            state.includeNotes,
-                            onIncludeNotesChange
+                        Text(stringResource(R.string.report_content_label), fontWeight = FontWeight.SemiBold)
+                        Text(
+                            reportContentSummary(state),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        ReportSwitch(
-                            stringResource(R.string.include_metrics),
-                            state.includeAdditionalMetrics,
-                            onIncludeMetricsChange
+                        CompactActionButton(
+                            CompactAction(
+                                label = stringResource(R.string.report_content_selector),
+                                icon = Icons.Filled.Edit,
+                                onClick = { showContentDialog = true }
+                            )
                         )
                     }
-                    Button(
-                        onClick = onGenerate,
-                        enabled = !state.isWorking &&
-                            (state.format == ReportFormat.JSON || state.profiles.isNotEmpty()),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            stringResource(
+                    if (state.format == ReportFormat.JSON) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                stringResource(R.string.report_unit_global, state.unit.symbol),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+                            CompactActionButton(
+                                CompactAction(
+                                    label = stringResource(R.string.change_in_settings),
+                                    icon = Icons.Filled.Settings,
+                                    onClick = onOpenSettings
+                                )
+                            )
+                        }
+                    }
+                    CompactActionButton(
+                        CompactAction(
+                            label = stringResource(
                                 if (state.isWorking) R.string.working
                                 else R.string.generate_report
-                            )
+                            ),
+                            icon = Icons.Filled.AddCircle,
+                            onClick = onGenerate,
+                            primary = true,
+                            enabled = !state.isWorking &&
+                                (state.format == ReportFormat.JSON ||
+                                    state.profiles.isNotEmpty())
                         )
-                    }
+                    )
+            }
+        }
+        item {
+            SettingsSection(
+                title = stringResource(R.string.backup_status_title),
+                supportingText = stringResource(R.string.backup_status_body)
+            ) {
+                Text(stringResource(R.string.backup_status_manual_notice))
+                CompactActionButton(
+                    CompactAction(
+                        label = stringResource(R.string.open_data_backup),
+                        icon = Icons.Filled.Build,
+                        onClick = onOpenDataBackup
+                    )
+                )
             }
         }
         state.generatedFile?.let { generated ->
@@ -196,32 +248,32 @@ fun ReportsScreen(
                                 ?: stringResource(R.string.json_backup_all_data)
                         )
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = onShare) {
-                                Text(stringResource(R.string.share))
-                            }
+                            CompactActionButton(
+                                CompactAction(
+                                    label = stringResource(R.string.share),
+                                    icon = Icons.Filled.Share,
+                                    onClick = onShare,
+                                    primary = true
+                                )
+                            )
                             if (state.generatedSummaryText != null) {
-                                OutlinedButton(onClick = onShareSummary) {
-                                    Text(stringResource(R.string.share_summary))
-                                }
+                                CompactActionButton(
+                                    CompactAction(
+                                        label = stringResource(R.string.share_summary),
+                                        icon = Icons.Filled.Info,
+                                        onClick = onShareSummary
+                                    )
+                                )
                             }
-                            OutlinedButton(onClick = onSaveFile) {
-                                Text(stringResource(R.string.save_copy))
-                            }
+                            CompactActionButton(
+                                CompactAction(
+                                    label = stringResource(R.string.save_copy),
+                                    icon = Icons.Filled.Edit,
+                                    onClick = onSaveFile
+                                )
+                            )
                         }
                     }
-                }
-            }
-        }
-        item {
-            SettingsSection(
-                title = stringResource(R.string.backup_restore_title),
-                supportingText = stringResource(R.string.backup_restore_body)
-            ) {
-                OutlinedButton(onClick = onImport, enabled = !state.isWorking) {
-                    Text(stringResource(R.string.import_json))
-                }
-                TextButton(onClick = onClearTemporaryFiles) {
-                    Text(stringResource(R.string.clear_temporary_files))
                 }
             }
         }
@@ -247,60 +299,141 @@ fun ReportsScreen(
         state.error?.let {
             item {
                 ErrorState(
-                    title = reportErrorText(it),
+                    title = stringResource(R.string.report_error_title),
                     body = state.validationErrors
                         .take(5)
                         .joinToString(separator = "\n")
-                        .ifBlank { reportErrorText(it) }
+                        .ifBlank { reportErrorText(it) },
+                    actionLabel = stringResource(R.string.dismiss_error),
+                    onAction = onDismissMessage,
+                    actionIcon = Icons.Filled.Close
                 )
             }
         }
     }
 
-    state.importPreview?.let { preview ->
+    if (showFormatDialog) {
         AlertDialog(
-            onDismissRequest = onDismissImport,
-            title = { Text(stringResource(R.string.import_preview_title)) },
+            onDismissRequest = { showFormatDialog = false },
+            title = { Text(stringResource(R.string.report_format)) },
             text = {
-                Text(
-                    stringResource(
-                        R.string.import_preview_body,
-                        preview.profileCount,
-                        preview.measurementCount,
-                        preview.goalCount,
-                        preview.deviceCount,
-                        preview.duplicateIdCount
-                    )
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { onRestore(RestoreMode.MERGE) }) {
-                    Text(stringResource(R.string.merge_data))
+                Column {
+                    ReportFormat.entries.forEach { format ->
+                        ReportOptionRow(
+                            label = reportFormatText(format),
+                            selected = state.format == format,
+                            onClick = {
+                                onFormatChange(format)
+                                showFormatDialog = false
+                            }
+                        )
+                    }
                 }
             },
-            dismissButton = {
-                Column {
-                    TextButton(onClick = { onRestore(RestoreMode.REPLACE) }) {
-                        Text(stringResource(R.string.replace_data))
-                    }
-                    TextButton(onClick = onDismissImport) {
-                        Text(stringResource(R.string.cancel))
-                    }
+            confirmButton = {
+                TextButton(onClick = { showFormatDialog = false }) {
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
     }
+
+    if (showPeriodDialog) {
+        AlertDialog(
+            onDismissRequest = { showPeriodDialog = false },
+            title = { Text(stringResource(R.string.report_period)) },
+            text = {
+                Column {
+                    ReportPeriod.entries.forEach { period ->
+                        ReportOptionRow(
+                            label = reportPeriodText(period),
+                            selected = state.period == period,
+                            onClick = {
+                                onPeriodChange(period)
+                                showPeriodDialog = false
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showPeriodDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    if (showContentDialog) {
+        AlertDialog(
+            onDismissRequest = { showContentDialog = false },
+            title = { Text(stringResource(R.string.report_content_dialog_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.report_content_dialog_body))
+                    if (state.format == ReportFormat.PDF) {
+                        ReportCheckbox(
+                            label = stringResource(R.string.include_chart),
+                            checked = state.includeChart,
+                            onCheckedChange = onIncludeChartChange
+                        )
+                        ReportCheckbox(
+                            label = stringResource(R.string.include_table),
+                            checked = state.includeTable,
+                            onCheckedChange = onIncludeTableChange
+                        )
+                    }
+                    ReportCheckbox(
+                        label = stringResource(R.string.include_notes),
+                        checked = state.includeNotes,
+                        onCheckedChange = onIncludeNotesChange
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showContentDialog = false }) {
+                    Text(stringResource(R.string.save))
+                }
+            }
+        )
+    }
+
 }
 
 @Composable
-private fun ReportSwitch(label: String, value: Boolean, onChange: (Boolean) -> Unit) {
+private fun ReportCheckbox(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = ControlaPesoDesignSystem.sizes.minimumTouchTarget)
+            .toggleable(
+                value = checked,
+                onValueChange = onCheckedChange,
+                role = Role.Checkbox
+            ),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, modifier = Modifier.weight(1f))
-        Switch(checked = value, onCheckedChange = onChange)
+        Checkbox(checked = checked, onCheckedChange = null)
+    }
+}
+
+@Composable
+private fun ReportOptionRow(label: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = ControlaPesoDesignSystem.sizes.minimumTouchTarget)
+            .selectable(
+                selected = selected,
+                onClick = onClick,
+                role = Role.RadioButton
+            ),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Text(label)
     }
 }
 
@@ -316,6 +449,33 @@ private fun reportPeriodText(period: ReportPeriod): String = stringResource(
         ReportPeriod.CUSTOM -> R.string.period_custom
     }
 )
+
+@Composable
+private fun reportFormatText(format: ReportFormat): String = stringResource(
+    when (format) {
+        ReportFormat.PDF -> R.string.report_format_pdf
+        ReportFormat.CSV -> R.string.report_format_csv
+        ReportFormat.JSON -> R.string.report_format_json
+    }
+)
+
+@Composable
+private fun reportContentSummary(state: ReportsUiState): String {
+    if (state.format == ReportFormat.JSON) {
+        return stringResource(R.string.json_backup_all_data)
+    }
+    val selected = buildList {
+        if (state.format == ReportFormat.PDF && state.includeChart) {
+            add(stringResource(R.string.include_chart))
+        }
+        if (state.format == ReportFormat.PDF && state.includeTable) {
+            add(stringResource(R.string.include_table))
+        }
+        if (state.includeNotes) add(stringResource(R.string.include_notes))
+    }
+    return selected.takeIf { it.isNotEmpty() }?.joinToString(" · ")
+        ?: stringResource(R.string.report_content_none)
+}
 
 @Composable
 private fun reportMessageText(message: ReportsMessage): String = stringResource(

@@ -13,7 +13,7 @@ import java.time.Instant
             entity = ProfileEntity::class,
             parentColumns = ["id"],
             childColumns = ["profileId"],
-            onDelete = ForeignKey.CASCADE
+            onDelete = ForeignKey.SET_NULL
         ),
         ForeignKey(
             entity = ScaleDeviceEntity::class,
@@ -31,7 +31,7 @@ import java.time.Instant
 )
 data class WeightMeasurementEntity(
     @PrimaryKey val id: String,
-    val profileId: String,
+    val profileId: String?,
     val weightKg: Double,
     val measuredAt: Instant,
     val zoneOffsetSeconds: Int?,

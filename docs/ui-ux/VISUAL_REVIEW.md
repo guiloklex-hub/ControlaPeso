@@ -65,7 +65,7 @@ Evidências principais:
 | Critério | Resultado |
 | --- | --- |
 | Barra compacta em fonte 200% | Rótulos `Início`, `Hist.`, `Medir`, `Relat.` e `Ajust.` ficam em uma linha e não se sobrepõem. |
-| Formulário em fonte 200% | Título e descrição refluem; campos continuam roláveis; máscara `DD-MM-AAAA` permanece legível. |
+| Formulário em fonte 200% | Título e descrição refluem; campos continuam roláveis; máscara `DD/MM/AAAA` permanece legível. |
 | Tema escuro | Hero, superfícies baixas, rail e status mantêm contraste e hierarquia. |
 | Tema claro | Superfícies tonais e bordas continuam distintas sem depender de sombra. |
 | Contraste reforçado | Texto preto/branco e containers teal explícitos substituem defaults inconsistentes. |

@@ -12,14 +12,15 @@ preservados. Nenhuma dependência foi atualizada por conveniência.
 | Lifecycle Compose/ViewModel | 2.9.4 | coleta consciente do lifecycle e ViewModels Compose; versão alinhada explicitamente à resolução transitiva |
 | Core SplashScreen | 1.2.0 | splash compatível desde API 24 |
 | Kotlinx Serialization JSON | 1.9.0 | schema de backup validável e versionado |
-| WorkManager KTX | 2.11.2 | limpeza e lembretes aproximados persistentes |
+| WorkManager KTX | 2.11.2 | limpeza, lembretes e backup local periódico |
 | Health Connect client | 1.1.0 | escrita opcional de `WeightRecord` |
 | Material icons core | BOM | ícones pequenos da navegação, sem pacote estendido |
 | kotlinx-coroutines-test | 1.9.0 | relógio, dispatcher e `StateFlow` determinísticos em testes de ViewModel |
 
 PDF usa `PdfDocument`; CSV usa biblioteca padrão; compartilhamento usa
-FileProvider/SAF. Não foram adicionadas bibliotecas de gráfico, DI, banco
-remoto, rede, analytics, imagem ou animação.
+FileProvider/SAF. GitHub Releases usa `HttpsURLConnection`, sem cliente HTTP
+adicional. Não foram adicionadas bibliotecas de gráfico,
+DI, banco remoto, analytics, imagem ou animação.
 
 O layout adaptável foi implementado com APIs já presentes no Compose
 (`BoxWithConstraints`, `NavigationBar`, `NavigationRail`, `FlowRow` e painéis

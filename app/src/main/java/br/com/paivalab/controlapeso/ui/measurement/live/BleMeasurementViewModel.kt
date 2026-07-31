@@ -54,7 +54,9 @@ enum class LiveMeasurementStatus {
 
 data class BleMeasurementUiState(
     val profiles: List<Profile> = emptyList(),
+    val profilePhotoPaths: Map<String, String> = emptyMap(),
     val selectedProfileId: String? = null,
+    val profileSelectionExplicit: Boolean = false,
     val preferences: AppPreferences = AppPreferences(),
     val bluetoothSupport: BleSupportStatus = BleSupportStatus.UNKNOWN,
     val bluetoothPower: BluetoothPowerStatus = BluetoothPowerStatus.UNKNOWN,
@@ -123,10 +125,17 @@ class BleMeasurementViewModel(
         container.preferencesRepository.preferences,
         local
     ) { profiles, preferences, state ->
-        val selectedId = state.selectedProfileId
-            ?: ProfileSelectionPolicy.defaultProfileId(profiles)
+        val selectedId = if (state.profileSelectionExplicit) {
+            state.selectedProfileId
+        } else {
+            state.selectedProfileId ?: ProfileSelectionPolicy.defaultProfileId(profiles)
+        }
         state.copy(
             profiles = profiles,
+            profilePhotoPaths = profiles.mapNotNull { profile ->
+                container.profilePhotoStore.pathFor(profile.id)
+                    ?.let { profile.id to it }
+            }.toMap(),
             selectedProfileId = selectedId,
             preferences = preferences
         )
@@ -193,7 +202,19 @@ class BleMeasurementViewModel(
     }
 
     fun setProfile(profileId: String) =
-        local.update { it.copy(selectedProfileId = profileId) }
+        local.update {
+            it.copy(
+                selectedProfileId = profileId,
+                profileSelectionExplicit = true
+            )
+        }
+
+    fun clearProfile() = local.update {
+        it.copy(
+            selectedProfileId = null,
+            profileSelectionExplicit = true
+        )
+    }
 
     fun setNote(value: String) =
         local.update { it.copy(note = value.take(500)) }
@@ -214,6 +235,7 @@ class BleMeasurementViewModel(
         refreshEnvironment()
         val state = local.value
         if (
+            uiState.value.preferences.confirmedBleUnit == null ||
             state.permissionStatus != BlePermissionStatus.GRANTED ||
             state.bluetoothPower != BluetoothPowerStatus.ON ||
             state.bluetoothSupport != BleSupportStatus.SUPPORTED
@@ -238,10 +260,26 @@ class BleMeasurementViewModel(
 
     fun stopScan() = source.stop(BleScanStopReason.MANUAL)
 
+    fun dismissError() = local.update { state ->
+        val nextStatus = when {
+            state.savedMeasurement != null -> LiveMeasurementStatus.SAVED
+            state.stableEvent != null -> LiveMeasurementStatus.STABLE
+            state.permissionStatus != BlePermissionStatus.GRANTED ->
+                LiveMeasurementStatus.PERMISSION_REQUIRED
+            state.bluetoothPower == BluetoothPowerStatus.OFF ->
+                LiveMeasurementStatus.BLUETOOTH_OFF
+            else -> LiveMeasurementStatus.READY
+        }
+        state.copy(
+            error = null,
+            saveError = null,
+            status = nextStatus
+        )
+    }
+
     fun save(acceptDuplicate: Boolean = false) {
         val state = uiState.value
         val event = state.stableEvent ?: return
-        val profileId = state.selectedProfileId ?: return
         if (state.isSaving) return
         local.update {
             it.copy(
@@ -255,7 +293,7 @@ class BleMeasurementViewModel(
             when (
                 val result = saveBleMeasurement(
                     event = event,
-                    profileId = profileId,
+                    profileId = state.selectedProfileId,
                     confirmedUnit = state.preferences.confirmedBleUnit,
                     note = state.note,
                     source = measurementSource,
@@ -297,7 +335,9 @@ class BleMeasurementViewModel(
         measurement: WeightMeasurement
     ) {
         if (measurement.source == MeasurementSource.DEMO) return
-        val profile = container.profileRepository.findById(measurement.profileId)
+        val profile = measurement.profileId?.let { profileId ->
+            container.profileRepository.findById(profileId)
+        }
         if (profile?.healthConnectEnabled == true) {
             container.healthConnectWeightWriter.write(measurement)
         }
@@ -319,7 +359,7 @@ class BleMeasurementViewModel(
     fun updateSavedProfile() {
         val state = uiState.value
         val saved = state.savedMeasurement ?: return
-        val selectedProfileId = state.selectedProfileId ?: return
+        val selectedProfileId = state.selectedProfileId
         if (saved.profileId == selectedProfileId) return
         viewModelScope.launch {
             val updated = saved.copy(
@@ -453,7 +493,7 @@ class BleMeasurementViewModel(
             }
             receiverRegistered = false
         }
-        source.stop(BleScanStopReason.VIEW_MODEL_CLEARED)
+        source.close()
         super.onCleared()
     }
 

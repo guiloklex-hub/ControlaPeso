@@ -1,13 +1,19 @@
 package br.com.paivalab.controlapeso.data.local
 
 import androidx.room.Room
+import androidx.room.testing.MigrationTestHelper
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import br.com.paivalab.controlapeso.core.time.AppClock
+import br.com.paivalab.controlapeso.data.backup.BackupRestoreResult
+import br.com.paivalab.controlapeso.data.backup.JsonBackupManager
+import br.com.paivalab.controlapeso.data.backup.RestoreMode
 import br.com.paivalab.controlapeso.data.local.entity.ProfileEntity
 import br.com.paivalab.controlapeso.data.local.entity.WeightMeasurementEntity
 import br.com.paivalab.controlapeso.data.local.entity.GoalEntity
 import br.com.paivalab.controlapeso.data.local.entity.ScaleDeviceEntity
 import br.com.paivalab.controlapeso.data.local.mapper.toDomain
+import br.com.paivalab.controlapeso.data.preferences.AppPreferencesRepository
 import br.com.paivalab.controlapeso.data.repository.GoalRepositoryImpl
 import br.com.paivalab.controlapeso.data.repository.MeasurementRepositoryImpl
 import br.com.paivalab.controlapeso.data.repository.ProfileRepositoryImpl
@@ -19,10 +25,20 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
 
+@RunWith(AndroidJUnit4::class)
 class ControlaPesoDatabaseTest {
+    @get:Rule
+    val migrationTestHelper = MigrationTestHelper(
+        InstrumentationRegistry.getInstrumentation(),
+        ControlaPesoDatabase::class.java
+    )
+
     private lateinit var database: ControlaPesoDatabase
 
     @Before
@@ -39,7 +55,7 @@ class ControlaPesoDatabaseTest {
     }
 
     @Test
-    fun profileCascadeDeletesMeasurement_andRawPayloadRoundTrips() = runBlocking {
+    fun deletingProfileUnassignsMeasurement_andRawPayloadRoundTrips() = runBlocking {
         val profile = profile("p1", active = true)
         database.profileDao().insert(profile)
         database.measurementDao().insert(measurement(profile.id))
@@ -49,7 +65,9 @@ class ControlaPesoDatabaseTest {
         assertNull(stored?.bodyFatPercent)
 
         database.profileDao().delete(profile)
-        assertNull(database.measurementDao().findById("m1"))
+        val unassigned = requireNotNull(database.measurementDao().findById("m1"))
+        assertNull(unassigned.profileId)
+        assertEquals("C0 68 28 8C", unassigned.rawPayloadHex)
     }
 
     @Test
@@ -121,8 +139,8 @@ class ControlaPesoDatabaseTest {
     }
 
     @Test
-    fun databaseSchemaStartsAtVersionOne() {
-        assertEquals(1, database.openHelper.readableDatabase.version)
+    fun databaseSchemaStartsAtVersionTwo() {
+        assertEquals(2, database.openHelper.readableDatabase.version)
     }
 
     @Test
@@ -167,6 +185,99 @@ class ControlaPesoDatabaseTest {
 
         assertEquals(true, repository.deleteById("m1"))
         assertNull(repository.findById("m1"))
+    }
+
+    @Test
+    fun measurementRepositoryAssignsUnassignedMeasurements() = runBlocking {
+        database.profileDao().insert(profile("p1", active = true))
+        val repository = MeasurementRepositoryImpl(database.measurementDao())
+        val instant = Instant.parse("2026-07-27T12:30:00Z")
+        repository.insert(measurement(null).toDomain())
+
+        assertEquals("m1", repository.observeUnassigned().first().single().id)
+        assertEquals(
+            1,
+            repository.assignToProfile(
+                measurementIds = listOf("m1"),
+                profileId = "p1",
+                updatedAt = instant
+            )
+        )
+        assertEquals("p1", repository.findById("m1")?.profileId)
+        assertEquals(0, repository.observeUnassigned().first().size)
+    }
+
+    @Test
+    fun invalidRestoreDoesNotMutateExistingLocalRows() = runBlocking {
+        database.profileDao().insert(profile("p1", active = true))
+        database.measurementDao().insert(measurement("p1"))
+        val instant = Instant.parse("2026-07-27T12:00:00Z")
+        val manager = JsonBackupManager(
+            database = database,
+            profileRepository = ProfileRepositoryImpl(database.profileDao(), AppClock { instant }),
+            measurementRepository = MeasurementRepositoryImpl(database.measurementDao()),
+            goalRepository = GoalRepositoryImpl(database.goalDao()),
+            deviceRepository = ScaleDeviceRepositoryImpl(database.scaleDeviceDao()),
+            preferencesRepository = AppPreferencesRepository(
+                InstrumentationRegistry.getInstrumentation().targetContext
+            ),
+            clock = AppClock { instant }
+        )
+
+        val result = manager.restore("{\"schemaVersion\":1", RestoreMode.REPLACE)
+
+        assertTrue(result is BackupRestoreResult.Invalid)
+        assertEquals("p1", database.measurementDao().findById("m1")?.profileId)
+        assertEquals("C0 68 28 8C", database.measurementDao().findById("m1")?.rawPayloadHex)
+    }
+
+    @Test
+    fun migrationToVersionTwoPreservesExistingRowsAndRawPayload() {
+        val databaseName = "controla-peso-migration-${System.nanoTime()}"
+        migrationTestHelper.createDatabase(databaseName, 1).apply {
+            execSQL(
+                "INSERT INTO profiles " +
+                    "(id, name, avatarKey, heightCm, birthDate, preferredWeightUnit, " +
+                    "healthConnectEnabled, isActive, createdAt, updatedAt) VALUES " +
+                    "('p1', 'Pessoa', NULL, NULL, NULL, 'KILOGRAM', 0, 1, 0, 0)"
+            )
+            execSQL(
+                "INSERT INTO weight_measurements " +
+                    "(id, profileId, weightKg, measuredAt, zoneOffsetSeconds, source, " +
+                    "isStable, deviceId, deviceName, deviceAddress, note, rawPayloadHex, " +
+                    "impedanceOne, impedanceTwo, bodyFatPercent, muscleMassKg, " +
+                    "bodyWaterPercent, boneMassKg, visceralFatLevel, metabolicAge, " +
+                    "createdAt, updatedAt) VALUES " +
+                    "('m1', 'p1', 75.0, 0, -10800, 'BLE', 1, NULL, 'Yoda1', " +
+                    "'AA:BB:CC:DD:EE:FF', NULL, 'C0 68 28 8C', NULL, NULL, NULL, NULL, " +
+                    "NULL, NULL, NULL, NULL, 0, 0)"
+            )
+            close()
+        }
+
+        val migrated = migrationTestHelper.runMigrationsAndValidate(
+            databaseName,
+            2,
+            true,
+            MIGRATION_1_2
+        )
+        migrated.query(
+            "SELECT profileId, rawPayloadHex FROM weight_measurements WHERE id = 'm1'"
+        ).use { cursor ->
+            assertEquals(true, cursor.moveToFirst())
+            assertEquals("p1", cursor.getString(0))
+            assertEquals("C0 68 28 8C", cursor.getString(1))
+        }
+        migrated.execSQL("PRAGMA foreign_keys = ON")
+        migrated.execSQL("DELETE FROM profiles WHERE id = 'p1'")
+        migrated.query(
+            "SELECT profileId, rawPayloadHex FROM weight_measurements WHERE id = 'm1'"
+        ).use { cursor ->
+            assertEquals(true, cursor.moveToFirst())
+            assertEquals(true, cursor.isNull(0))
+            assertEquals("C0 68 28 8C", cursor.getString(1))
+        }
+        migrated.close()
     }
 
     @Test
@@ -226,7 +337,7 @@ class ControlaPesoDatabaseTest {
         updatedAt = Instant.parse("2026-07-27T12:00:00Z")
     )
 
-    private fun measurement(profileId: String) = WeightMeasurementEntity(
+    private fun measurement(profileId: String?) = WeightMeasurementEntity(
         id = "m1",
         profileId = profileId,
         weightKg = 103.8,

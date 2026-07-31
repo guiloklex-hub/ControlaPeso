@@ -16,6 +16,8 @@ import br.com.paivalab.controlapeso.ui.onboarding.OnboardingScreen
 import br.com.paivalab.controlapeso.ui.onboarding.OnboardingViewModel
 import br.com.paivalab.controlapeso.ui.scanner.ScannerViewModel
 import br.com.paivalab.controlapeso.ui.theme.ControlaPesoTheme
+import br.com.paivalab.controlapeso.ui.update.ReleaseUpdateDialog
+import br.com.paivalab.controlapeso.ui.update.ReleaseUpdateUiState
 
 @Composable
 fun ControlaPesoApp(
@@ -26,6 +28,12 @@ fun ControlaPesoApp(
     onShareText: (String) -> Unit,
     onCopyText: (String) -> Unit,
     onShareFile: (SharedReportFile) -> Unit,
+    updateState: ReleaseUpdateUiState,
+    onCheckForUpdates: () -> Unit,
+    onViewReleaseNotes: () -> Unit = {},
+    onDismissUpdate: () -> Unit,
+    onDownloadAndInstallUpdate: () -> Unit,
+    onDismissUpdateInstallFeedback: () -> Unit,
     requestedDestination: String? = null,
     onDestinationConsumed: () -> Unit = {}
 ) {
@@ -35,45 +43,60 @@ fun ControlaPesoApp(
         highContrast = uiState.preferences.highContrast,
         visualEffects = uiState.preferences.visualEffects
     ) {
-        when {
-            uiState.isLoading -> Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+        Box(modifier = Modifier.fillMaxSize()) {
+            when {
+                uiState.isLoading -> Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
 
-            !uiState.preferences.onboardingCompleted -> {
-                val onboardingViewModel: OnboardingViewModel = viewModel(
-                    factory = OnboardingViewModel.Factory(container)
-                )
-                val onboardingState by onboardingViewModel.uiState
-                    .collectAsStateWithLifecycle()
-                OnboardingScreen(
-                    state = onboardingState,
-                    onNext = onboardingViewModel::next,
-                    onPrevious = onboardingViewModel::previous,
-                    onSkip = onboardingViewModel::skipOnboarding,
-                    onFinish = onboardingViewModel::finish,
+                !uiState.preferences.onboardingCompleted -> {
+                    val onboardingViewModel: OnboardingViewModel = viewModel(
+                        factory = OnboardingViewModel.Factory(container)
+                    )
+                    val onboardingState by onboardingViewModel.uiState
+                        .collectAsStateWithLifecycle()
+                    val scannerState by scannerViewModel.uiState
+                        .collectAsStateWithLifecycle()
+                    OnboardingScreen(
+                        state = onboardingState,
+                        onNext = onboardingViewModel::next,
+                        onPrevious = onboardingViewModel::previous,
+                        onSkip = onboardingViewModel::skipOnboarding,
+                        onFinish = onboardingViewModel::finish,
+                        onRequestBlePermissions = onRequestBlePermissions,
+                        blePermissionStatus = scannerState.permissionStatus,
+                        onNameChange = onboardingViewModel::setName,
+                        onHeightChange = onboardingViewModel::setHeight,
+                        onBirthDateChange = onboardingViewModel::setBirthDate,
+                        onUnitChange = onboardingViewModel::setUnit,
+                        onTargetChange = onboardingViewModel::setTargetWeight,
+                        onThemeChange = onboardingViewModel::setTheme
+                    )
+                }
+
+                else -> ControlaPesoNavHost(
+                    container = container,
+                    scannerViewModel = scannerViewModel,
+                    activeProfile = uiState.activeProfile,
                     onRequestBlePermissions = onRequestBlePermissions,
-                    onNameChange = onboardingViewModel::setName,
-                    onHeightChange = onboardingViewModel::setHeight,
-                    onBirthDateChange = onboardingViewModel::setBirthDate,
-                    onUnitChange = onboardingViewModel::setUnit,
-                    onTargetChange = onboardingViewModel::setTargetWeight,
-                    onThemeChange = onboardingViewModel::setTheme
+                    onShareText = onShareText,
+                    onCopyText = onCopyText,
+                    onShareFile = onShareFile,
+                    updateState = updateState,
+                    onCheckForUpdates = onCheckForUpdates,
+                    onViewReleaseNotes = onViewReleaseNotes,
+                    requestedDestination = requestedDestination,
+                    onDestinationConsumed = onDestinationConsumed
                 )
             }
-
-            else -> ControlaPesoNavHost(
-                container = container,
-                scannerViewModel = scannerViewModel,
-                onRequestBlePermissions = onRequestBlePermissions,
-                onShareText = onShareText,
-                onCopyText = onCopyText,
-                onShareFile = onShareFile,
-                requestedDestination = requestedDestination,
-                onDestinationConsumed = onDestinationConsumed
+            ReleaseUpdateDialog(
+                state = updateState,
+                onDismiss = onDismissUpdate,
+                onDownloadAndInstall = onDownloadAndInstallUpdate,
+                onDismissInstallFeedback = onDismissUpdateInstallFeedback
             )
         }
     }

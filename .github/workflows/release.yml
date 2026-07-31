@@ -87,15 +87,32 @@ jobs:
           cd release-artifacts
           sha256sum * > SHA256SUMS.txt
 
+      - name: Extract changelog section for release notes
+        shell: bash
+        run: |
+          release_version="${RELEASE_TAG#v}"
+          awk -v version="$release_version" '
+            $0 == "## [" version "]" || index($0, "## [" version "] -") == 1 {
+              capture = 1
+            }
+            capture {
+              if (seen_heading && /^## /) exit
+              if (seen_heading && /^\[[^]]+\]:/) exit
+              print
+              seen_heading = 1
+            }
+          ' CHANGELOG.md > release-notes.md
+          test -s release-notes.md
+
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" release-artifacts/* --clobber
-          else
-            gh release create "$RELEASE_TAG" release-artifacts/* \
-              --title "Controla Peso $RELEASE_TAG" \
-              --generate-notes
+            echo "Release $RELEASE_TAG já existe e é imutável; publique uma nova versão para corrigir ou reverter." >&2
+            exit 1
           fi
+          gh release create "$RELEASE_TAG" release-artifacts/* \
+            --title "Controla Peso $RELEASE_TAG" \
+            --notes-file release-notes.md

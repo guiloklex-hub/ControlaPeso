@@ -39,6 +39,10 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.health.WRITE_WEIGHT" />
+    <!-- Used only for the optional GitHub update check. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android always shows its own confirmation before an APK is installed. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:name=".app.ControlaPesoApplication"

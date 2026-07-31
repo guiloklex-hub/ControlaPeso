@@ -4,13 +4,13 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.pdf.PdfDocument
+import br.com.paivalab.controlapeso.BuildConfig
+import br.com.paivalab.controlapeso.core.time.BrazilianDateTimeFormatter
 import br.com.paivalab.controlapeso.core.time.MeasurementTimeFormatter
 import br.com.paivalab.controlapeso.domain.model.WeightMeasurement
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.domain.model.MeasurementSource
 import java.io.OutputStream
-import java.text.DateFormat
-import java.util.Date
 import java.util.Locale
 
 data class PdfReportResult(val pageCount: Int)
@@ -30,7 +30,7 @@ class PdfReportService {
             var y = MARGIN
 
             y = drawHeader(canvas, data, options.unit, y)
-            if (options.includeChart && data.measurements.isNotEmpty()) {
+            if (options.includeChart && data.measurements.size >= 2) {
                 y = drawChart(canvas, data.measurements, options.unit, y)
             }
             if (options.includeTable) {
@@ -102,7 +102,9 @@ class PdfReportService {
             PAGE_WIDTH - 2 * MARGIN,
             bodyPaint
         )
-        if (data.measurements.any { it.source == MeasurementSource.DEMO }) {
+        if (BuildConfig.DEBUG && data.measurements.any {
+                it.source == MeasurementSource.DEMO
+            }) {
             y = drawWrappedText(
                 canvas,
                 "ATENÇÃO: este relatório inclui dados falsos de demonstração.",
@@ -113,13 +115,15 @@ class PdfReportService {
         }
         y = drawText(
             canvas,
-            "Gerado em: ${dateTimeFormat.format(Date(data.generatedAt.toEpochMilli()))}",
+            "Gerado em: ${BrazilianDateTimeFormatter.dateTime(data.generatedAt)}",
             y,
             bodyPaint
         )
-        val start = data.startInclusive?.let { dateFormat.format(Date(it.toEpochMilli())) }
+        val start = data.startInclusive?.let(BrazilianDateTimeFormatter::date)
             ?: "primeiro registro"
-        val end = data.endExclusive?.let { dateFormat.format(Date(it.toEpochMilli())) }
+        val end = data.endExclusive
+            ?.minusNanos(1)
+            ?.let(BrazilianDateTimeFormatter::date)
             ?: "último registro"
         y = drawText(canvas, "Período: $start a $end", y, bodyPaint)
         data.statistics?.let { stats ->
@@ -214,29 +218,19 @@ class PdfReportService {
         add(
             "${MeasurementTimeFormatter.dateTime(measurement)} · " +
                 "${number(options.unit.fromKilograms(measurement.weightKg))} " +
-                "${options.unit.symbol} · ${measurement.source.name}"
+                "${options.unit.symbol} · ${displaySourceName(measurement.source)}"
         )
         if (options.includeNotes && !measurement.note.isNullOrBlank()) {
             add("Observação: ${measurement.note.take(140)}")
         }
-        if (options.includeAdditionalMetrics) {
-            val metrics = listOfNotNull(
-                measurement.impedanceOne?.let { "impedância 1 ${number(it)}" },
-                measurement.impedanceTwo?.let { "impedância 2 ${number(it)}" },
-                measurement.bodyFatPercent?.let { "gordura ${number(it)}%" },
-                measurement.muscleMassKg?.let {
-                    "músculo ${number(options.unit.fromKilograms(it))} ${options.unit.symbol}"
-                },
-                measurement.bodyWaterPercent?.let { "água ${number(it)}%" },
-                measurement.boneMassKg?.let {
-                    "massa óssea ${number(options.unit.fromKilograms(it))} ${options.unit.symbol}"
-                },
-                measurement.visceralFatLevel?.let { "visceral ${number(it)}" },
-                measurement.metabolicAge?.let { "idade metabólica $it" }
-            )
-            if (metrics.isNotEmpty()) add(metrics.joinToString(" · "))
-        }
     }
+
+    private fun displaySourceName(source: MeasurementSource): String =
+        if (source == MeasurementSource.DEMO && !BuildConfig.DEBUG) {
+            "IMPORT"
+        } else {
+            source.name
+        }
 
     private fun startPage(document: PdfDocument, number: Int): PdfDocument.Page =
         document.startPage(
@@ -319,9 +313,6 @@ class PdfReportService {
         private const val ROW_GAP = 8f
         private const val DISCLAIMER_HEIGHT = 52f
         private val PORTUGUESE_BRAZIL = Locale.forLanguageTag("pt-BR")
-        private val dateFormat = DateFormat.getDateInstance(DateFormat.MEDIUM)
-        private val dateTimeFormat =
-            DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
         private val headerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.rgb(0, 106, 101)
             textSize = 28f

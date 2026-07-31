@@ -1,6 +1,7 @@
 package br.com.paivalab.controlapeso.data.preferences
 
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
+import java.time.Instant
 
 enum class ThemeMode {
     SYSTEM,
@@ -34,6 +35,13 @@ enum class ChartSize {
     LARGE
 }
 
+enum class LocalBackupFrequency(val intervalDays: Long) {
+    OFF(0),
+    DAILY(1),
+    WEEKLY(7),
+    MONTHLY(30)
+}
+
 data class AppPreferences(
     val onboardingCompleted: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
@@ -55,5 +63,12 @@ data class AppPreferences(
     val remindersEnabled: Boolean = false,
     val reminderDaysMask: Int = 0b1111111,
     val reminderHour: Int = 9,
-    val reminderMinute: Int = 0
+    val reminderMinute: Int = 0,
+    /** Cached public release metadata used with the GitHub ETag; not user data. */
+    val releaseUpdateEtag: String? = null,
+    val releaseUpdateCachedRelease: String? = null,
+    /** Last local confirmation that a Health Connect history action finished. */
+    val healthLastSyncAt: Instant? = null,
+    val localBackupFrequency: LocalBackupFrequency = LocalBackupFrequency.OFF,
+    val lastLocalBackupAt: Instant? = null
 )

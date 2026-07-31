@@ -12,6 +12,7 @@ data class ScannerUiState(
     val bluetoothPower: BluetoothPowerStatus = BluetoothPowerStatus.UNKNOWN,
     val permissionStatus: BlePermissionStatus = BlePermissionStatus.REQUIRED,
     val isScanning: Boolean = false,
+    val hasCompletedScan: Boolean = false,
     val secondsRemaining: Int = 0,
     val scanPhase: BleScanPhase? = null,
     val devices: List<BleDeviceResult> = emptyList(),

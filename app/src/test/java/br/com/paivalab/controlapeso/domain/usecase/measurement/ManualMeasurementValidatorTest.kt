@@ -31,7 +31,7 @@ class ManualMeasurementValidatorTest {
         val invalid = validator.validate(
             validInput(
                 weight = "700",
-                date = "01-01-2027",
+                date = "01/01/2027",
                 note = "x".repeat(501)
             )
         )
@@ -43,15 +43,23 @@ class ManualMeasurementValidatorTest {
 
     @Test
     fun malformedDateAndTime_neverThrow() {
-        val result = validator.validate(validInput(date = "27/07/2026", time = "99:99"))
+        val result = validator.validate(validInput(date = "32/07/2026", time = "99:99"))
         require(result is ManualValidationResult.Invalid)
         assertTrue(ManualValidationError.INVALID_DATE in result.errors)
         assertTrue(ManualValidationError.INVALID_TIME in result.errors)
     }
 
+    @Test
+    fun profileIsOptionalForManualMeasurement() {
+        val result = validator.validate(validInput().copy(profileId = null))
+
+        require(result is ManualValidationResult.Valid)
+        assertEquals(null, result.value.profileId)
+    }
+
     private fun validInput(
         weight: String = "75.0",
-        date: String = "27-07-2026",
+        date: String = "27/07/2026",
         time: String = "16:30",
         unit: WeightUnit = WeightUnit.KILOGRAM,
         note: String = ""

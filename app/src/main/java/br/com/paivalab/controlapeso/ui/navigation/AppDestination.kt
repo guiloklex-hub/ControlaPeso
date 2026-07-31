@@ -40,6 +40,10 @@ sealed class AppDestination(
         R.string.nav_reports_compact,
         Icons.Filled.Info
     )
+    data object DataBackup : AppDestination(
+        "settings/data-backup",
+        R.string.data_backup_title
+    )
     data object Settings : AppDestination(
         "settings",
         R.string.nav_settings,

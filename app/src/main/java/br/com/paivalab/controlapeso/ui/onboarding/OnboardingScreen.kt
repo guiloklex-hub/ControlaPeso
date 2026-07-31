@@ -1,6 +1,5 @@
 package br.com.paivalab.controlapeso.ui.onboarding
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,18 +9,23 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,9 +36,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
+import br.com.paivalab.controlapeso.bluetooth.BlePermissionStatus
 import br.com.paivalab.controlapeso.data.preferences.ThemeMode
 import br.com.paivalab.controlapeso.domain.model.WeightUnit
 import br.com.paivalab.controlapeso.ui.components.BrazilianDateTextField
+import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactAction
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactActionButton
+import br.com.paivalab.controlapeso.ui.designsystem.components.MeasurementUnitSelector
 
 @Composable
 fun OnboardingScreen(
@@ -44,6 +53,7 @@ fun OnboardingScreen(
     onSkip: () -> Unit,
     onFinish: () -> Unit,
     onRequestBlePermissions: () -> Unit,
+    blePermissionStatus: BlePermissionStatus = BlePermissionStatus.REQUIRED,
     onNameChange: (String) -> Unit,
     onHeightChange: (String) -> Unit,
     onBirthDateChange: (String) -> Unit,
@@ -52,107 +62,120 @@ fun OnboardingScreen(
     onThemeChange: (ThemeMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground
     ) {
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .widthIn(max = 720.dp)
-                .fillMaxWidth()
-                .fillMaxHeight()
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-        Text(
-            text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold
-        )
-        LinearProgressIndicator(
-            progress = { (state.step + 1f) / state.totalSteps },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Text(
-            text = stringResource(
-                R.string.onboarding_step,
-                state.step + 1,
-                state.totalSteps
-            ),
-            style = MaterialTheme.typography.labelLarge
-        )
-
-        when (state.step) {
-            0 -> IntroStep(
-                title = stringResource(R.string.onboarding_welcome_title),
-                body = stringResource(R.string.onboarding_welcome_body)
-            )
-            1 -> IntroStep(
-                title = stringResource(R.string.onboarding_local_title),
-                body = stringResource(R.string.onboarding_local_body)
-            )
-            2 -> PermissionStep(onRequestBlePermissions)
-            3 -> ProfileStep(
-                state,
-                onNameChange,
-                onHeightChange,
-                onBirthDateChange,
-                onUnitChange
-            )
-            4 -> TargetStep(state, onTargetChange)
-            5 -> ThemeStep(state.themeMode, onThemeChange)
-            6 -> IntroStep(
-                title = stringResource(R.string.onboarding_scale_title),
-                body = stringResource(R.string.onboarding_scale_body)
-            )
-            else -> IntroStep(
-                title = stringResource(R.string.onboarding_health_title),
-                body = stringResource(R.string.onboarding_health_body)
-            )
-        }
-
-        state.error?.let {
-            Text(
-                text = onboardingErrorText(it),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
-
-        Spacer(Modifier.weight(1f, fill = false))
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .widthIn(max = 720.dp)
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                if (state.step > 0) {
-                    OutlinedButton(onClick = onPrevious, enabled = !state.isSaving) {
-                        Text(stringResource(R.string.back))
-                    }
-                } else {
-                    TextButton(onClick = onSkip, enabled = !state.isSaving) {
-                        Text(stringResource(R.string.skip_onboarding))
-                    }
+                Text(
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                LinearProgressIndicator(
+                    progress = { (state.step + 1f) / state.totalSteps },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    text = stringResource(
+                        R.string.onboarding_step,
+                        state.step + 1,
+                        state.totalSteps
+                    ),
+                    style = MaterialTheme.typography.labelLarge
+                )
+
+                when (state.step) {
+                    0 -> IntroStep(
+                        title = stringResource(R.string.onboarding_welcome_title),
+                        body = stringResource(R.string.onboarding_welcome_body)
+                    )
+                    1 -> IntroStep(
+                        title = stringResource(R.string.onboarding_local_title),
+                        body = stringResource(R.string.onboarding_local_body)
+                    )
+                    2 -> PermissionStep(onRequestBlePermissions, blePermissionStatus)
+                    3 -> ProfileStep(
+                        state,
+                        onNameChange,
+                        onHeightChange,
+                        onBirthDateChange,
+                        onUnitChange
+                    )
+                    4 -> TargetStep(state, onTargetChange)
+                    5 -> ThemeStep(state.themeMode, onThemeChange)
+                    6 -> IntroStep(
+                        title = stringResource(R.string.onboarding_scale_title),
+                        body = stringResource(R.string.onboarding_scale_body)
+                    )
+                    else -> IntroStep(
+                        title = stringResource(R.string.onboarding_health_title),
+                        body = stringResource(R.string.onboarding_health_body)
+                    )
                 }
-                Button(
-                    onClick = if (state.step == state.totalSteps - 1) {
-                        onFinish
-                    } else {
-                        onNext
-                    },
-                    enabled = !state.isSaving
-                ) {
+
+                state.error?.let {
                     Text(
-                        stringResource(
-                            if (state.step == state.totalSteps - 1) {
-                                R.string.finish
+                        text = onboardingErrorText(it),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                Spacer(Modifier.weight(1f, fill = false))
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    if (state.step > 0) {
+                        CompactActionButton(
+                            CompactAction(
+                                label = stringResource(R.string.back),
+                                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                                onClick = onPrevious,
+                                enabled = !state.isSaving
+                            )
+                        )
+                    } else {
+                        CompactActionButton(
+                            CompactAction(
+                                label = stringResource(R.string.skip_onboarding),
+                                icon = Icons.Filled.Close,
+                                onClick = onSkip,
+                                enabled = !state.isSaving
+                            )
+                        )
+                    }
+                    CompactActionButton(
+                        CompactAction(
+                            label = stringResource(
+                                if (state.step == state.totalSteps - 1) {
+                                    R.string.finish
+                                } else {
+                                    R.string.next
+                                }
+                            ),
+                            icon = Icons.AutoMirrored.Filled.ArrowForward,
+                            onClick = if (state.step == state.totalSteps - 1) {
+                                onFinish
                             } else {
-                                R.string.next
-                            }
+                                onNext
+                            },
+                            primary = true,
+                            enabled = !state.isSaving
                         )
                     )
                 }
@@ -182,14 +205,42 @@ private fun IntroStep(title: String, body: String) {
 }
 
 @Composable
-private fun PermissionStep(onRequest: () -> Unit) {
+private fun PermissionStep(
+    onRequest: () -> Unit,
+    permissionStatus: BlePermissionStatus
+) {
     IntroStep(
         title = stringResource(R.string.onboarding_ble_title),
         body = stringResource(R.string.onboarding_ble_body)
     )
-    OutlinedButton(onClick = onRequest, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.request_permissions))
-    }
+    CompactActionButton(
+        CompactAction(
+            label = stringResource(R.string.request_permissions),
+            icon = Icons.Filled.Info,
+            onClick = onRequest,
+            primary = true
+        )
+    )
+    Text(
+        stringResource(
+            when (permissionStatus) {
+                BlePermissionStatus.GRANTED -> R.string.permission_granted
+                BlePermissionStatus.REQUIRED -> R.string.permission_required
+                BlePermissionStatus.DENIED -> R.string.permission_denied
+                BlePermissionStatus.PERMANENTLY_DENIED ->
+                    R.string.permission_permanently_denied
+            }
+        ),
+        style = MaterialTheme.typography.bodyMedium,
+        color = if (
+            permissionStatus == BlePermissionStatus.DENIED ||
+                permissionStatus == BlePermissionStatus.PERMANENTLY_DENIED
+        ) {
+            MaterialTheme.colorScheme.error
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        }
+    )
 }
 
 @Composable
@@ -230,20 +281,20 @@ private fun ProfileStep(
             label = stringResource(R.string.birth_date_optional),
             modifier = Modifier.fillMaxWidth()
         )
-        UnitSelector(state.unit, onUnitChange)
-    }
-}
-
-@Composable
-private fun UnitSelector(selected: WeightUnit, onSelected: (WeightUnit) -> Unit) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        WeightUnit.entries.forEach { unit ->
-            FilterChip(
-                selected = selected == unit,
-                onClick = { onSelected(unit) },
-                label = { Text(unit.symbol) }
+        MeasurementUnitSelector(
+            selected = state.unit,
+            onSelected = onUnitChange,
+            title = stringResource(R.string.onboarding_unit_title),
+            description = stringResource(R.string.onboarding_unit_body),
+            unitLabels = mapOf(
+                WeightUnit.KILOGRAM to stringResource(R.string.unit_kilogram_label),
+                WeightUnit.POUND to stringResource(R.string.unit_pound_label)
+            ),
+            unitDescriptions = mapOf(
+                WeightUnit.KILOGRAM to stringResource(R.string.unit_kilogram_description),
+                WeightUnit.POUND to stringResource(R.string.unit_pound_description)
             )
-        }
+        )
     }
 }
 
@@ -293,7 +344,9 @@ private fun ThemeStep(selected: ThemeMode, onSelected: (ThemeMode) -> Unit) {
                         )
                     )
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = ControlaPesoDesignSystem.sizes.minimumTouchTarget)
             )
         }
     }

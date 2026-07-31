@@ -7,27 +7,34 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import br.com.paivalab.controlapeso.R
+import br.com.paivalab.controlapeso.core.time.BrazilianDateTimeFormatter
 import br.com.paivalab.controlapeso.domain.model.ScaleDevice
 import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
 import br.com.paivalab.controlapeso.ui.designsystem.components.EmptyState
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactAction
+import br.com.paivalab.controlapeso.ui.designsystem.components.CompactActionButton
 import br.com.paivalab.controlapeso.ui.designsystem.components.ErrorState
 import br.com.paivalab.controlapeso.ui.designsystem.components.LoadingState
 import br.com.paivalab.controlapeso.ui.designsystem.components.ResponsiveScreenList
 import br.com.paivalab.controlapeso.ui.designsystem.components.StatusPill
-import java.text.DateFormat
 import java.time.Instant
-import java.util.Date
 
 @Composable
 fun DevicesScreen(
@@ -37,13 +44,14 @@ fun DevicesScreen(
     onDismissForget: () -> Unit,
     onConfirmForget: () -> Unit,
     onMeasure: () -> Unit,
-    onDiagnostic: () -> Unit,
+    onRetry: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     ResponsiveScreenList(modifier = modifier) {
         item {
             Text(
                 stringResource(R.string.devices_title),
+                modifier = Modifier.semantics { heading() },
                 style = MaterialTheme.typography.headlineLarge
             )
         }
@@ -59,10 +67,14 @@ fun DevicesScreen(
             item {
                 ErrorState(
                     title = stringResource(R.string.devices_load_error_title),
-                    body = stringResource(R.string.data_load_error)
+                    body = stringResource(R.string.data_load_error),
+                    actionLabel = stringResource(R.string.retry_action),
+                    onAction = onRetry,
+                    actionIcon = Icons.Filled.Refresh
                 )
             }
         } else if (state.devices.isEmpty()) {
+            item { EmptyDevicesGuide() }
             item {
                 EmptyState(
                     title = stringResource(R.string.devices_empty_title),
@@ -79,11 +91,6 @@ fun DevicesScreen(
                 onForget = { onForget(item.device) },
                 onMeasure = onMeasure
             )
-        }
-        item {
-            OutlinedButton(onClick = onDiagnostic, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.open_diagnostic))
-            }
         }
     }
 
@@ -110,6 +117,45 @@ fun DevicesScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun EmptyDevicesGuide() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Column(
+            modifier = Modifier.padding(ControlaPesoDesignSystem.spacing.md),
+            verticalArrangement = Arrangement.spacedBy(
+                ControlaPesoDesignSystem.spacing.xs
+            )
+        ) {
+            androidx.compose.material3.Icon(
+                imageVector = Icons.Filled.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                stringResource(R.string.devices_empty_guide_title),
+                modifier = Modifier.semantics { heading() },
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                stringResource(R.string.devices_empty_guide_step_permissions),
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                stringResource(R.string.devices_empty_guide_step_measure),
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                stringResource(R.string.devices_empty_guide_step_save),
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
     }
 }
 
@@ -168,17 +214,30 @@ private fun DeviceCard(
                 )
             )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onMeasure) {
-                    Text(stringResource(R.string.measure_with_scale))
-                }
+                CompactActionButton(
+                    CompactAction(
+                        label = stringResource(R.string.measure_with_scale),
+                        icon = Icons.Filled.AddCircle,
+                        onClick = onMeasure,
+                        primary = true
+                    )
+                )
                 if (!device.isPreferred) {
-                    OutlinedButton(onClick = onPreferred) {
-                        Text(stringResource(R.string.make_preferred))
-                    }
+                    CompactActionButton(
+                        CompactAction(
+                            label = stringResource(R.string.make_preferred),
+                            icon = Icons.Filled.Check,
+                            onClick = onPreferred
+                        )
+                    )
                 }
-                TextButton(onClick = onForget) {
-                    Text(stringResource(R.string.forget))
-                }
+                CompactActionButton(
+                    CompactAction(
+                        label = stringResource(R.string.forget),
+                        icon = Icons.Filled.Delete,
+                        onClick = onForget
+                    )
+                )
             }
         }
     }
@@ -186,7 +245,5 @@ private fun DeviceCard(
 
 @Composable
 private fun Instant?.localizedOrUnavailable(): String =
-    this?.let {
-        DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
-            .format(Date.from(it))
-    } ?: stringResource(R.string.not_available)
+    this?.let(BrazilianDateTimeFormatter::dateTime)
+        ?: stringResource(R.string.not_available)

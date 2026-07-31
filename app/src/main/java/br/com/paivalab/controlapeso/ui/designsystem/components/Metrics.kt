@@ -5,9 +5,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -15,7 +17,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import br.com.paivalab.controlapeso.ui.designsystem.ControlaPesoDesignSystem
 
@@ -129,6 +136,74 @@ fun StatusPill(
 }
 
 @Composable
+fun DataOriginBadge(
+    source: String,
+    modifier: Modifier = Modifier,
+    isDemo: Boolean = false
+) {
+    StatusPill(
+        text = source,
+        modifier = modifier,
+        color = if (isDemo) {
+            MaterialTheme.colorScheme.error
+        } else {
+            ControlaPesoDesignSystem.colors.informational
+        }
+    )
+}
+
+enum class StatusCardTone {
+    NEUTRAL,
+    POSITIVE,
+    ATTENTION,
+    ERROR
+}
+
+@Composable
+fun StatusCard(
+    title: String,
+    state: String,
+    description: String,
+    icon: ImageVector,
+    action: CompactAction?,
+    modifier: Modifier = Modifier,
+    tone: StatusCardTone = StatusCardTone.NEUTRAL
+) {
+    val colors = when (tone) {
+        StatusCardTone.NEUTRAL -> CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+        StatusCardTone.POSITIVE -> CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+        StatusCardTone.ATTENTION -> CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+        )
+        StatusCardTone.ERROR -> CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        )
+    }
+    Card(modifier = modifier, colors = colors) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(ControlaPesoDesignSystem.spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(ControlaPesoDesignSystem.spacing.xs)
+        ) {
+            Icon(imageVector = icon, contentDescription = null)
+            Text(
+                title,
+                modifier = Modifier.semantics { heading() },
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(state, style = MaterialTheme.typography.titleSmall)
+            Text(description, style = MaterialTheme.typography.bodyMedium)
+            action?.let { CompactActionButton(it) }
+        }
+    }
+}
+
+@Composable
 fun TrendBadge(
     text: String,
     modifier: Modifier = Modifier,
@@ -183,7 +258,9 @@ private fun ActionCard(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .heightIn(min = ControlaPesoDesignSystem.sizes.minimumTouchTarget)
+            .clickable(onClick = onClick)
+            .semantics(mergeDescendants = true) { role = Role.Button },
         shape = MaterialTheme.shapes.large,
         color = containerColor,
         contentColor = contentColor

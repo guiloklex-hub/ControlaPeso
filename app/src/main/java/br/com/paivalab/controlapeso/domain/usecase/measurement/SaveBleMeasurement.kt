@@ -39,7 +39,7 @@ class SaveBleMeasurement(
 ) {
     suspend operator fun invoke(
         event: StableWeightEvent,
-        profileId: String,
+        profileId: String?,
         confirmedUnit: WeightUnit?,
         note: String?,
         source: MeasurementSource = MeasurementSource.BLE,
@@ -53,10 +53,8 @@ class SaveBleMeasurement(
         val now = clock.now()
         val measuredAt = Instant.ofEpochMilli(event.reading.observedAtEpochMillis)
         val device = if (source == MeasurementSource.BLE) {
-            upsertDevice(event, now)
-        } else {
-            null
-        }
+            prepareDevice(event, now)
+        } else null
         val zoneOffset = zoneId.rules.getOffset(measuredAt)
         val proposed = WeightMeasurement(
             id = idGenerator.newId(),
@@ -97,17 +95,20 @@ class SaveBleMeasurement(
                 return SaveBleResult.ProbableDuplicate(proposed, duplicate)
             }
         }
+        if (source == MeasurementSource.BLE && device != null) {
+            persistDevice(device)
+        }
         measurementRepository.insert(proposed)
         createPendingGoalIfNeeded(proposed)
         return SaveBleResult.Saved(proposed)
     }
 
-    private suspend fun upsertDevice(
+    private suspend fun prepareDevice(
         event: StableWeightEvent,
         now: Instant
     ): ScaleDevice {
         val existing = deviceRepository.findByAddress(event.reading.deviceAddress)
-        val device = ScaleDevice(
+        return ScaleDevice(
             id = existing?.id ?: idGenerator.newId(),
             displayName = event.reading.deviceName ?: existing?.displayName,
             bluetoothAddress = event.reading.deviceAddress,
@@ -118,19 +119,25 @@ class SaveBleMeasurement(
             createdAt = existing?.createdAt ?: now,
             updatedAt = now
         )
-        if (existing == null) deviceRepository.insert(device)
-        else deviceRepository.update(device)
-        return device
+    }
+
+    private suspend fun persistDevice(device: ScaleDevice) {
+        if (deviceRepository.findByAddress(device.bluetoothAddress)?.id == device.id) {
+            deviceRepository.update(device)
+        } else {
+            deviceRepository.insert(device)
+        }
     }
 
     private suspend fun createPendingGoalIfNeeded(measurement: WeightMeasurement) {
         val targetKg = preferencesRepository.preferences.first().pendingGoalTargetKg ?: return
-        if (goalRepository.observeForProfile(measurement.profileId).first().isEmpty()) {
+        val profileId = measurement.profileId ?: return
+        if (goalRepository.observeForProfile(profileId).first().isEmpty()) {
             val now = clock.now()
             goalRepository.insert(
                 WeightGoal(
                     id = idGenerator.newId(),
-                    profileId = measurement.profileId,
+                    profileId = profileId,
                     startWeightKg = measurement.weightKg,
                     targetWeightKg = targetKg,
                     startDate = MeasurementTimeFormatter.localDate(
