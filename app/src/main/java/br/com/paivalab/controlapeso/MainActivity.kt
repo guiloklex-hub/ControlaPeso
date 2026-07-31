@@ -18,6 +18,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
+import androidx.core.content.IntentSanitizer
 import androidx.core.net.toUri
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -280,20 +281,21 @@ class MainActivity : ComponentActivity() {
                 }
                 if (confirmationIntent == null) {
                     finishPackageInstallation(success = false)
-                } else if (!isTrustedPackageInstallerIntent(confirmationIntent)) {
-                    finishPackageInstallation(success = false)
                 } else {
-                    val resolved = packageManager.resolveActivity(
-                        confirmationIntent,
-                        PackageManager.MATCH_DEFAULT_ONLY
-                    )
-                    val explicitIntent = Intent(confirmationIntent).setComponent(
-                        ComponentName(
-                            requireNotNull(resolved).activityInfo.packageName,
-                            resolved.activityInfo.name
-                        )
-                    )
-                    startActivity(explicitIntent)
+                    val trustedComponent = trustedPackageInstallerComponent(confirmationIntent)
+                    if (trustedComponent == null) {
+                        finishPackageInstallation(success = false)
+                    } else {
+                        val sanitizedIntent = IntentSanitizer.Builder()
+                            .allowComponent(trustedComponent)
+                            .apply {
+                                confirmationIntent.action?.let(::allowAction)
+                                allowFlags(confirmationIntent.flags)
+                            }
+                            .build()
+                            .sanitizeByThrowing(confirmationIntent)
+                        startActivity(sanitizedIntent)
+                    }
                 }
             }
             PackageInstaller.STATUS_SUCCESS -> finishPackageInstallation(success = true)
@@ -307,15 +309,17 @@ class MainActivity : ComponentActivity() {
         releaseUpdateViewModel.onInstallationFinished(success)
     }
 
-    private fun isTrustedPackageInstallerIntent(intent: Intent): Boolean {
+    private fun trustedPackageInstallerComponent(intent: Intent): ComponentName? {
         val resolved = packageManager.resolveActivity(
             intent,
             PackageManager.MATCH_DEFAULT_ONLY
-        ) ?: return false
-        val activityInfo = resolved.activityInfo ?: return false
-        val applicationInfo = activityInfo.applicationInfo ?: return false
-        return activityInfo.packageName != packageName &&
-            applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0
+        ) ?: return null
+        val activityInfo = resolved.activityInfo ?: return null
+        val applicationInfo = activityInfo.applicationInfo ?: return null
+        if (activityInfo.packageName == packageName ||
+            applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM == 0
+        ) return null
+        return ComponentName(activityInfo.packageName, activityInfo.name)
     }
 
     companion object {
