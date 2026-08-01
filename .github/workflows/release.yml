@@ -43,7 +43,7 @@ jobs:
       - name: Install Android SDK packages
         run: ./scripts/install-android-sdk.sh
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Validate version and signing configuration
         shell: bash
